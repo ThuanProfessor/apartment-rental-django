@@ -48,14 +48,14 @@ class Transaction(models.Model):
     fee_amount = models.DecimalField(max_digits=12, decimal_places=0, default=0)
     total_amount = models.DecimalField(max_digits=12, decimal_places=0)
     
-    # Payment gateway details
+
     gateway_transaction_id = models.CharField(max_length=100, blank=True)
     gateway_response = models.JSONField(default=dict, blank=True)
     
     status = models.CharField(max_length=20, choices=TRANSACTION_STATUS, default='pending')
     description = models.TextField(blank=True)
     
-    # Timestamps
+
     created_at = models.DateTimeField(auto_now_add=True)
     completed_at = models.DateTimeField(null=True, blank=True)
     
@@ -81,7 +81,7 @@ class Deposit(models.Model):
     amount = models.DecimalField(max_digits=12, decimal_places=0)
     status = models.CharField(max_length=20, choices=DEPOSIT_STATUS, default='pending')
     
-    # Refund details
+  
     refund_amount = models.DecimalField(max_digits=12, decimal_places=0, null=True, blank=True)
     refund_reason = models.TextField(blank=True)
     refunded_at = models.DateTimeField(null=True, blank=True)

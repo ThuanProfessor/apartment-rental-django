@@ -18,7 +18,6 @@ class PropertyReview(models.Model):
     title = models.CharField(max_length=200)
     comment = models.TextField()
     
-    # Detailed ratings
     cleanliness_rating = models.PositiveIntegerField(
         validators=[MinValueValidator(1), MaxValueValidator(5)], null=True, blank=True
     )

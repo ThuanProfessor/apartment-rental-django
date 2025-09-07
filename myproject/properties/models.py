@@ -100,16 +100,16 @@ class Property(models.Model):
     available_from = models.DateField()
     minimum_stay = models.PositiveIntegerField(default=1)  # months
     
-    # SEO and Analytics
+
     views_count = models.PositiveIntegerField(default=0)
     favorites_count = models.PositiveIntegerField(default=0)
     contact_count = models.PositiveIntegerField(default=0)
     
-    # Admin fields
+
     is_featured = models.BooleanField(default=False)
     admin_notes = models.TextField(blank=True)
     
-    # Timestamps
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     

@@ -26,8 +26,7 @@ class Notification(models.Model):
     notification_type = models.CharField(max_length=30, choices=NOTIFICATION_TYPES)
     title = models.CharField(max_length=200)
     message = models.TextField()
-    
-    # Optional related objects
+
     related_object_id = models.CharField(max_length=50, null=True, blank=True)
     related_object_type = models.CharField(max_length=50, blank=True)
     action_url = models.URLField(blank=True)
@@ -35,7 +34,7 @@ class Notification(models.Model):
     is_read = models.BooleanField(default=False)
     read_at = models.DateTimeField(null=True, blank=True)
     
-    # Push notification tracking
+
     is_push_sent = models.BooleanField(default=False)
     push_sent_at = models.DateTimeField(null=True, blank=True)
     
@@ -50,13 +49,12 @@ class Notification(models.Model):
 class NotificationPreference(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='notification_preferences')
     
-    # Email notifications
+
     email_new_message = models.BooleanField(default=True)
     email_viewing_request = models.BooleanField(default=True)
     email_property_update = models.BooleanField(default=False)
     email_marketing = models.BooleanField(default=False)
-    
-    # Push notifications
+
     push_new_message = models.BooleanField(default=True)
     push_viewing_request = models.BooleanField(default=True)
     push_property_update = models.BooleanField(default=True)
