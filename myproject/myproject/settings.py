@@ -29,7 +29,7 @@ SECRET_KEY = 'django-insecure-3n#^7tl0unp$g$rzs-b7v_m2a!=c9k)#a4pl%-7zgcve7ru+8z
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost ']
+ALLOWED_HOSTS = ['localhost ', '127.0.0.1', '46a5e8ddf6d8.ngrok-free.app']
 
 
 # Application definition
@@ -41,18 +41,18 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    #cài thêm - third party
+    
+    # Third party apps
     'rest_framework',
-    'rest_framework_singlejwt',
+    'rest_framework_simplejwt',
     'corsheaders',
     'django_filters',
-    'channel',
-    'phonenumbers_field',
-    
+    'phonenumber_field',
+    'apartment_rental',
 ]
 
 MIDDLEWARE = [
-    'coreheaders.middleware.CorsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -89,14 +89,26 @@ ASGI_APPLICATION = 'myproject.asgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': BASE_DIR / 'apartment_rental_db',
+        'NAME': 'apartment_rental_db',
         'USER': 'root',
         'PASSWORD': 'Admin@123',
-        'HOST': 'localhost',
-        
+        'HOST': '', #port mặc định của local host
+        'PORT': '',
     }
 }
 
+#Settting cho cloudinary
+import cloudinary
+import cloudinary.uploader
+from cloudinary.utils import cloudinary_url
+
+#Cấu hình Cloudinary
+cloudinary.config( 
+    cloud_name = "dg5ts9slf", 
+    api_key = "523315624128241", 
+    api_secret = "kpR83NbacJprFxwz2jCGxt3nb4E", # Click 'View API Keys' above to copy your API secret
+    secure=True
+)
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -115,19 +127,6 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
-
-LOCAL_APPS = [
-    'accounts',
-    'analytics',
-    'bôoking',
-    'core',
-    'chat',
-    'notifications',
-    'payments',
-    'properties',
-    'reviews',
-]
-
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
@@ -151,8 +150,8 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-
-CUSTOM_USER_MODEL = 'accounts.customUser'
+# Custom User Model
+AUTH_USER_MODEL = 'apartment_rental.CustomUser' #dùng thay cho auth.user
 
 #Cau hinh JWT
 SIMPLE_JWT = {
@@ -161,3 +160,36 @@ SIMPLE_JWT = {
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
 }
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.AllowAny',  # Changed for public API access
+    ],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 12,
+    'DEFAULT_FILTER_BACKENDS': [
+        'django_filters.rest_framework.DjangoFilterBackend',
+        'rest_framework.filters.SearchFilter',
+        'rest_framework.filters.OrderingFilter',
+    ],
+}
+
+# CORS settings for React frontend
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",  # React dev server
+    "http://127.0.0.1:3000",
+    "http://localhost:3001",  # Alternative port
+]
+
+CORS_ALLOW_CREDENTIALS = True
+
+# Allow all origins during development (remove in production)
+CORS_ALLOW_ALL_ORIGINS = True
+
+# Media files configuration for image uploads
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
