@@ -5,6 +5,8 @@ import uuid
 User = get_user_model()
 
 class Notification(models.Model):
+    
+    
     NOTIFICATION_TYPES = [
         ('new_message', 'Tin nhắn mới'),
         ('viewing_request', 'Yêu cầu xem nhà'),
@@ -34,7 +36,6 @@ class Notification(models.Model):
     is_read = models.BooleanField(default=False)
     read_at = models.DateTimeField(null=True, blank=True)
     
-
     is_push_sent = models.BooleanField(default=False)
     push_sent_at = models.DateTimeField(null=True, blank=True)
     
