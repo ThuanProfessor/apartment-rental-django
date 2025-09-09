@@ -147,3 +147,10 @@ class Contact(models.Model):
     
     def __str__(self):
         return f"Contact for {self.property.title}"
+
+#Yêu thích
+class Favorite(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='favorites')
+    property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name='favorited_by')
+    
+    

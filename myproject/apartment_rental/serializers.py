@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from rest_framework.serializers import ModelSerializer
 from .models import CustomUser, Property, PropertyImage, Booking, Review, Contact
 
 
@@ -30,7 +31,6 @@ class PropertySerializer(serializers.ModelSerializer):
 
 
 class PropertyCreateSerializer(serializers.ModelSerializer):
-    """Serializer for creating properties"""
     class Meta:
         model = Property
         fields = ['title', 'description', 'property_type', 'address', 
@@ -85,7 +85,6 @@ class ContactSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at']
 
 
-# Simplified serializers for list views (better performance)
 class PropertyListSerializer(serializers.ModelSerializer):
     owner_name = serializers.CharField(source='owner.username', read_only=True)
     main_image = serializers.SerializerMethodField()

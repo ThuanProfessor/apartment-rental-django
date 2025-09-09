@@ -14,8 +14,9 @@ router.register(r'users', views.UserViewSet, basename='user')
 
 urlpatterns = [
     # API endpoints
-    path('api/', include(router.urls)),
+    path('', include(router.urls)),
     
     # Authentication endpoints (using DRF's built-in)
     path('api/auth/', include('rest_framework.urls')),
+    
 ]

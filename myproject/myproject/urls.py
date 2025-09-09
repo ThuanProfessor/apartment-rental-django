@@ -24,6 +24,8 @@ urlpatterns = [
     path('', include('apartment_rental.urls')),
     path('admin/', admin.site.urls),
     re_path(r'^ckeditor/', include('ckeditor_uploader.urls')),
+    path('o/', include('oauth2_provider.urls',  namespace='oauth2_provider')),
+       
 ]
 
 # Serve media files during development

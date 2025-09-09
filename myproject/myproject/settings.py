@@ -15,6 +15,7 @@ from pathlib import Path
 from datetime import timedelta
 from re import A
 
+from flask import cli
 from sqlalchemy import false
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -56,6 +57,7 @@ INSTALLED_APPS = [
     'apartment_rental.apps.ApartmentRentalConfig',
     'ckeditor',
     'ckeditor_uploader',
+    'oauth2_provider',
 ]
 
 
@@ -193,6 +195,7 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
         'rest_framework.authentication.SessionAuthentication',
+        'oauth2_provider.contrib.rest_framework.OAuth2Authentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.AllowAny',  # Changed for public API access
@@ -204,6 +207,7 @@ REST_FRAMEWORK = {
         'rest_framework.filters.SearchFilter',
         'rest_framework.filters.OrderingFilter',
     ],
+    
 }
 
 # CORS settings for React frontend
@@ -221,3 +225,6 @@ CORS_ALLOW_ALL_ORIGINS = True
 #Cau hinh mysql
 import pymysql
 pymysql.install_as_MySQLdb()
+
+client_id = 'S4MJ2pobWnutBLFxESRssNMD6suaCEn7WuzpwD0g'
+client_secret = 'qpZ3QB2OKROSawLnROOMOVPTWSazgpOhUaPQJWsXlAR1kr4BmIqtFBreOXOTY3HP8DjTOBYROmNGfDHf3rt5aAFsEmRzdRlrvTRHhLoKIB1S7VYTXYTsvpAzOgDL43ca'
