@@ -11,7 +11,6 @@ from .serializers import (
 
 
 class PropertyViewSet(viewsets.ModelViewSet):
-    """API ViewSet for Property management"""
     queryset = Property.objects.all()
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['property_type', 'district', 'city', 'status']
@@ -45,7 +44,6 @@ class PropertyViewSet(viewsets.ModelViewSet):
     
     @action(detail=True, methods=['get'])
     def reviews(self, request, pk=None):
-        """Get reviews for a specific property"""
         property_obj = self.get_object()
         reviews = property_obj.reviews.all()
         serializer = ReviewSerializer(reviews, many=True)
@@ -53,7 +51,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
 
 
 class BookingViewSet(viewsets.ModelViewSet):
-    """API ViewSet for Booking management"""
+
     serializer_class = BookingSerializer
     permission_classes = [permissions.IsAuthenticated]
     
@@ -71,7 +69,6 @@ class BookingViewSet(viewsets.ModelViewSet):
 
 
 class ReviewViewSet(viewsets.ModelViewSet):
-    """API ViewSet for Review management"""
     serializer_class = ReviewSerializer
     permission_classes = [permissions.IsAuthenticated]
     
@@ -85,7 +82,6 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
 
 class ContactViewSet(viewsets.ModelViewSet):
-    """API ViewSet for Contact management"""
     serializer_class = ContactSerializer
     permission_classes = [permissions.IsAuthenticated]
     
@@ -105,7 +101,6 @@ class ContactViewSet(viewsets.ModelViewSet):
 
 
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
-    """API ViewSet for User information (read-only)"""
     serializer_class = CustomUserSerializer
     permission_classes = [permissions.IsAuthenticated]
     
@@ -114,20 +109,17 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
     
     @action(detail=False, methods=['get'])
     def me(self, request):
-        """Get current user profile"""
         serializer = self.get_serializer(request.user)
         return Response(serializer.data)
     
     @action(detail=False, methods=['get'])
     def my_properties(self, request):
-        """Get current user's properties"""
         properties = Property.objects.filter(owner=request.user)
         serializer = PropertyListSerializer(properties, many=True)
         return Response(serializer.data)
     
     @action(detail=False, methods=['get'])
     def my_bookings(self, request):
-        """Get current user's bookings"""
         bookings = Booking.objects.filter(tenant=request.user)
         serializer = BookingSerializer(bookings, many=True)
         return Response(serializer.data)

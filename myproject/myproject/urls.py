@@ -20,8 +20,8 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 urlpatterns = [
+    path('/', include('apartment_rental.urls')),
     path('admin/', admin.site.urls),
-    path('', include('apartment_rental.urls')),
 ]
 
 # Serve media files during development
