@@ -23,7 +23,9 @@ Ngoài ra, website cung cấp giao diện quản trị cho admin để quản l�
 - **Triển khai**: PythonAnywhere / Railway / Render  
 - **API bên thứ 3**: Google Maps API (hiển thị bản đồ)  
 - **Realtime Chat**: Firebase (tích hợp trò chuyện giữa người thuê và người cho thuê)  
-- **Xác thực & Bảo mật**: OAuth2  
+- **Xác thực & Bảo mật**: OAuth2
+  <img width="1270" height="679" alt="image" src="https://github.com/user-attachments/assets/42ee8acf-8f9d-4713-b103-7e2ae7e4de00" />
+
 
 ---
 
