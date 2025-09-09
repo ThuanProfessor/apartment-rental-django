@@ -8,6 +8,7 @@ celery==5.5.3
 certifi==2025.8.3
 channels==4.3.1
 channels_redis==4.3.0
+charset-normalizer==3.4.3
 click==8.1.8
 click-didyoumean==0.3.1
 click-plugins==1.1.1.2
@@ -16,8 +17,10 @@ cloudinary==1.44.1
 colorama==0.4.6
 db==0.1.1
 Django==5.2.6
+django-ckeditor==6.7.3
 django-cors-headers==4.7.0
 django-filter==25.1
+django-js-asset==3.1.2
 django-phonenumber-field==8.1.0
 djangorestframework==3.16.1
 djangorestframework_simplejwt==5.5.1
@@ -26,6 +29,7 @@ Flask-Login==0.6.3
 Flask-Migrate==4.0.5
 Flask-SQLAlchemy==3.1.1
 greenlet==3.2.4
+idna==3.10
 importlib_metadata==8.7.0
 itsdangerous==2.2.0
 Jinja2==3.1.6
@@ -43,6 +47,7 @@ PyMySQL==1.1.2
 python-dateutil==2.9.0.post0
 pytz==2025.2
 redis==6.4.0
+requests==2.32.5
 six==1.17.0
 SQLAlchemy==2.0.43
 sqlparse==0.5.3

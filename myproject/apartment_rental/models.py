@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from phonenumber_field.modelfields import PhoneNumberField
 import uuid
+from ckeditor.fields import RichTextField
 
 from cloudinary.models import CloudinaryField
 
@@ -17,7 +18,7 @@ class CustomUser(AbstractUser):
     phone_number = PhoneNumberField(blank=True, null=True)
     avatar = CloudinaryField('avatar', blank=True, null=True)
     
-    # Fix reverse accessor clashes
+    #cấu hình cho phép phân quyền nâng cao trong admin
     groups = models.ManyToManyField(
         'auth.Group',
         related_name='custom_users',
@@ -122,7 +123,7 @@ class Review(models.Model):
     property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name='reviews')
     reviewer = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='reviews')
     
-    rating = models.PositiveIntegerField(choices=[(i, i) for i in range(1, 6)])  # 1-5 stars
+    rating = models.PositiveIntegerField(choices=[(i, i) for i in range(1, 6)])  # từ 1 đến 5 sao
     comment = models.TextField()
     
     created_at = models.DateTimeField(auto_now_add=True)

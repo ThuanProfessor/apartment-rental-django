@@ -20,7 +20,9 @@ from sqlalchemy import false
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
+# Media files configuration for image uploads
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
@@ -29,7 +31,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-3n#^7tl0unp$g$rzs-b7v_m2a!=c9k)#a4pl%-7zgcve7ru+8z'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = ['localhost ', '127.0.0.1', '46a5e8ddf6d8.ngrok-free.app']
 
@@ -50,8 +52,25 @@ INSTALLED_APPS = [
     'corsheaders',
     'django_filters',
     'phonenumber_field',
-    'apartment_rental',
+    #app mặc định của django
+    'apartment_rental.apps.ApartmentRentalConfig',
+    'ckeditor',
+    'ckeditor_uploader',
 ]
+
+
+
+# Use Cloudinary for CKEditor uploads
+CKEDITOR_UPLOAD_PATH = "uploads/"
+CKEDITOR_CONFIGS = {
+    'default': {
+        'toolbar': 'full',
+        'height': 300,
+        'width': '100%',
+        'filebrowserUploadUrl': '/ckeditor/upload/',
+        'filebrowserBrowseUrl': '/ckeditor/browse/',
+    },
+}
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
@@ -111,6 +130,13 @@ cloudinary.config(
     api_secret = "kpR83NbacJprFxwz2jCGxt3nb4E", # Click 'View API Keys' above to copy your API secret
     secure=True
 )
+
+# Cloudinary storage configuration for CKEditor (alternative approach)
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': 'dg5ts9slf',
+    'API_KEY': '523315624128241',
+    'API_SECRET': 'kpR83NbacJprFxwz2jCGxt3nb4E',
+}
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -182,9 +208,9 @@ REST_FRAMEWORK = {
 
 # CORS settings for React frontend
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",  # React dev server
+    "http://localhost:3000",  
     "http://127.0.0.1:3000",
-    "http://localhost:3001",  # Alternative port
+    "http://localhost:3001",  
 ]
 
 CORS_ALLOW_CREDENTIALS = True
@@ -192,6 +218,6 @@ CORS_ALLOW_CREDENTIALS = True
 # Allow all origins during development (remove in production)
 CORS_ALLOW_ALL_ORIGINS = True
 
-# Media files configuration for image uploads
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+#Cau hinh mysql
+import pymysql
+pymysql.install_as_MySQLdb()

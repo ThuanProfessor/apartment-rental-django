@@ -1,6 +1,19 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import CustomUser, Property, PropertyImage, Booking, Review, Contact
+from django.utils.html import format_html
+from apartment_rental.models import CustomUser, Property, PropertyImage, Booking, Review, Contact
+
+
+# admin.site.register(CustomUser)
+# admin.site.register(Property)
+# admin.site.register(PropertyImage)
+# admin.site.register(Booking)
+# admin.site.register(Review)
+# admin.site.register(Contact)
+
+admin.site.site_header = "Hệ thống quản trị cho thuê căn hộ"
+admin.site.site_title = "Quản trị căn hộ"
+admin.site.index_title = "Chào mừng đến với hệ thống quản trị"
 
 
 @admin.register(CustomUser)
@@ -19,6 +32,13 @@ class CustomUserAdmin(UserAdmin):
 class PropertyImageInline(admin.TabularInline):
     model = PropertyImage
     extra = 1
+    readonly_fields = ('image_preview',)
+    
+    def image_preview(self, obj):
+        if obj.image:
+            return format_html('<img src="{}" style="max-height: 100px; max-width: 150px;" />', obj.image.url)
+        return "No image"
+    image_preview.short_description = "Preview"
 
 
 @admin.register(Property)
@@ -50,6 +70,12 @@ class PropertyAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
+    
+    class Media:
+        css = {
+            'all': ('static/css/admin_custom.css',)
+        }
+        js = ('static/js/admin_custom.js',)
 
 
 @admin.register(Booking)
