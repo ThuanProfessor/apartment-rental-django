@@ -2,6 +2,9 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views
 
+
+
+from rest_framework import permissions
 app_name = 'apartment_rental'
 
 # API Router for ViewSets
@@ -11,6 +14,9 @@ router.register(r'bookings', views.BookingViewSet, basename='booking')
 router.register(r'reviews', views.ReviewViewSet, basename='review')
 router.register(r'contacts', views.ContactViewSet, basename='contact')
 router.register(r'users', views.UserViewSet, basename='user')
+
+
+
 
 urlpatterns = [
     # API endpoints
