@@ -3,10 +3,12 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
-from .models import Property, Booking, Review, Contact, CustomUser
+from sqlalchemy import true
+from rest_framework.response import Response
+from .models import Favorite, Property, Booking, Review, Contact, CustomUser
 from .serializers import (
     PropertySerializer, PropertyListSerializer, PropertyCreateSerializer,
-    BookingSerializer, ReviewSerializer, ContactSerializer, CustomUserSerializer
+    BookingSerializer, ReviewSerializer, ContactSerializer, CustomUserSerializer, FavoriteSerializer
 )
 
 
@@ -88,10 +90,8 @@ class ContactViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         if user.user_type == 'landlord':
-            # Landlords see contacts for their properties
             return Contact.objects.filter(property__owner=user)
         else:
-            # Tenants see their own contacts
             return Contact.objects.filter(tenant=user)
     
     def perform_create(self, serializer):
@@ -123,3 +123,50 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
         bookings = Booking.objects.filter(tenant=request.user)
         serializer = BookingSerializer(bookings, many=True)
         return Response(serializer.data)
+
+
+class FavoriteViewSet(viewsets.ViewSet):
+    serializer_class = FavoriteSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        return self.objects.filter(user=self.request.user)
+    
+    
+    def perform_create(self, serializer):
+        property_id = serializer.validated_data.get('property_id')
+        property_obj = Property.objects.get(id=property_id)
+        serializer.save(user=self.request.user, property=property_obj)
+        
+    @action(detail=False, methods=['post'])
+    def toggle(self, request):
+        property_id = request.data.get('property_id')
+        
+        try:
+            property_obj = Property.objects.get(id=property_id)
+            favorite, created = Favorite.objects.add_or_create(
+                user = request.user,
+                property = property_obj
+            )
+            
+            if not created:
+                favorite.delete()
+                return Response({'favorited': False})
+            return Response({'favorited': True})
+        
+        except Property.DoesNotExist:
+            return Response({'error': 'Property not found'}, status=status.HTTP_404_NOT_FOUND)
+            
+        
+            
+            
+            
+            
+        
+            
+        
+        
+    
+    
+
+    

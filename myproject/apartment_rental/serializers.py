@@ -257,7 +257,8 @@ class TenantStatsSerializer(serializers.Serializer):
     total_spent = serializers.DecimalField(max_digits=12, decimal_places=0)
                 
             
-    
+# thêm mới serializer cho Booking, Review, Contact
+
 
 class BookingSerializer(serializers.ModelSerializer):
     property = PropertySerializer(read_only=True)
