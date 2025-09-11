@@ -4,6 +4,7 @@ from django.utils.html import format_html
 from apartment_rental.models import CustomUser, Property, PropertyImage, Booking, Review, Contact
 
 
+
 # admin.site.register(CustomUser)
 # admin.site.register(Property)
 # admin.site.register(PropertyImage)
