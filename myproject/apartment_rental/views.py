@@ -1,15 +1,20 @@
+from urllib import response
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.views import APIView 
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from sqlalchemy import true
+from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.response import Response
 from .models import Favorite, Property, Booking, Review, Contact, CustomUser
 from .serializers import (
     PropertySerializer, PropertyListSerializer, PropertyCreateSerializer,
-    BookingSerializer, ReviewSerializer, ContactSerializer, CustomUserSerializer, FavoriteSerializer
+    BookingSerializer, ReviewSerializer, ContactSerializer, CustomUserSerializer, FavoriteSerializer,
+    DashboardStatsSerializer, LandlordStatsSerializer, TenantStatsSerializer, UserRegistrationSerializer
 )
+from myproject.apartment_rental import serializers
 
 
 class PropertyViewSet(viewsets.ModelViewSet):
@@ -156,6 +161,34 @@ class FavoriteViewSet(viewsets.ViewSet):
         
         except Property.DoesNotExist:
             return Response({'error': 'Property not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+
+
+class RegisterView(APIView):
+    permission_classes = [permissions.AllowAny]
+    
+    def post(self, request):
+        serializer = UserRegistrationSerializer(data=request.data)
+        
+        
+        if serializer.is_valid:
+            user = serializer.save() #Luu vao sessions
+            refresh = RefreshToken.for_user(user)
+            
+            return Response({
+                'user': CustomUserSerializer(user).data,
+                'refresh': str(refresh),
+                'access': str(refresh.access_token)
+                
+            }, status = status.HTTP_201_CREATED)
+            
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
+            
+            
+    
+    
+    
             
         
             
