@@ -17,7 +17,6 @@ router.register(r'users', views.UserViewSet, basename='user')
 
 
 
-
 urlpatterns = [
     # API endpoints
     path('', include(router.urls)),
