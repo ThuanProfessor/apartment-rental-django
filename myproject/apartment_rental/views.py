@@ -1,4 +1,7 @@
 from urllib import response
+from flask import request
+from itsdangerous import Serializer
+from redis import ResponseError
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -12,7 +15,7 @@ from .models import Favorite, Property, Booking, Review, Contact, CustomUser
 from .serializers import (
     PropertySerializer, PropertyListSerializer, PropertyCreateSerializer,
     BookingSerializer, ReviewSerializer, ContactSerializer, CustomUserSerializer, FavoriteSerializer,
-    DashboardStatsSerializer, LandlordStatsSerializer, TenantStatsSerializer, UserRegistrationSerializer
+    DashboardStatsSerializer, LandlordStatsSerializer, TenantStatsSerializer, UserLoginSerializer, UserRegistrationSerializer
 )
 from myproject.apartment_rental import serializers
 
@@ -184,7 +187,29 @@ class RegisterView(APIView):
             
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
             
+
+
+class LoginAPIView(APIView):
+    permission_classes = [permissions.AllowAny]
+    
+    def post(self, response):
+        serializer = UserLoginSerializer(data=request.data)
+        
+        if serializers.is_valid:
+            user = serializers.validated_data['user']
             
+            refresh = RefreshToken.for_user(user)
+            
+            return Response({
+                'user': CustomUserSerializer(user).data,
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+            }, status=status.HTTP_200_OK)
+            
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    
+    
             
     
     
