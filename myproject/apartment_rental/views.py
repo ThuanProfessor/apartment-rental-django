@@ -1,5 +1,6 @@
 from urllib import response
 from flask import request
+from flask_migrate import catch_errors
 from itsdangerous import Serializer
 from redis import ResponseError
 from rest_framework import viewsets, status, permissions
@@ -9,13 +10,15 @@ from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from sqlalchemy import true
+
+from django.db.models import Avg, Count, Sum
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.response import Response
 from .models import Favorite, Property, Booking, Review, Contact, CustomUser
 from .serializers import (
     PropertySerializer, PropertyListSerializer, PropertyCreateSerializer,
     BookingSerializer, ReviewSerializer, ContactSerializer, CustomUserSerializer, FavoriteSerializer,
-    DashboardStatsSerializer, LandlordStatsSerializer, TenantStatsSerializer, UserLoginSerializer, UserRegistrationSerializer
+    DashboardStatsSerializer, LandlordStatsSerializer, TenantStatsSerializer, UserLoginSerializer, UserRegistrationSerializer, PropertyImageSerializer
 )
 from myproject.apartment_rental import serializers
 
@@ -68,10 +71,8 @@ class BookingViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         if user.user_type == 'landlord':
-            # Landlords see bookings for their properties
             return Booking.objects.filter(property__owner=user)
         else:
-            # Tenants see their own bookings
             return Booking.objects.filter(tenant=user)
     
     def perform_create(self, serializer):
@@ -189,7 +190,7 @@ class RegisterView(APIView):
             
 
 
-class LoginAPIView(APIView):
+class LoginView(APIView):
     permission_classes = [permissions.AllowAny]
     
     def post(self, request):
@@ -209,13 +210,345 @@ class LoginAPIView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     
+
+class LogoutView(APIView):
+    permission_classes = [permissions.AllowAny]
     
+    def post(self, request):
+        try:
+            refresh_token = request.data["refresh"]
+            token = RefreshToken(refresh_token)
+            token.blacklist()
             
-    
-    
-    
+            return Response({'message': 'Đăng xuất thành công'}, status=status.HTTP_200_OK)
             
+        except Exception as e:
+            return Response({'message': 'Đăng xuất thất bại'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            
+
+class DashBoardStatsview(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get(self, request):
+        stats = {
+            'total_properties': Property.objects.count(),
+            'available_properties': Property.objects.filter(status='available').count(),
+            'total_booking': Booking.objects.count(),
+            'pending_booking': Booking.objects.filter(status='pending').count(),
+            'total_review': Review.objects.count(),
+            'avg_rating': Review.objects.aggregate(avg=Avg('rating'))['avg'] or 0
+            
+             
+        }
         
+        serializers = DashboardStatsSerializer(stats)
+        
+        return Response(serializers.data)
+    
+
+from rest_framework import viewsets, status, permissions
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework_simplejwt.tokens import RefreshToken
+from django.contrib.auth import login, logout
+from django.db.models import Avg, Count, Sum
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import SearchFilter, OrderingFilter
+from .models import Property, Booking, Review, Contact, CustomUser, Favorite
+from .serializers import (
+    PropertySerializer, PropertyListSerializer, PropertyCreateSerializer,
+    BookingSerializer, ReviewSerializer, ContactSerializer, CustomUserSerializer,
+    UserRegistrationSerializer, UserLoginSerializer, FavoriteSerializer,
+    DashboardStatsSerializer, LandlordStatsSerializer, TenantStatsSerializer
+)
+
+{{ ... }}
+
+class FavoriteViewSet(viewsets.ModelViewSet):
+    serializer_class = FavoriteSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        return Favorite.objects.filter(user=self.request.user)
+    
+    def perform_create(self, serializer):
+        property_id = serializer.validated_data.get('property_id')
+        property_obj = Property.objects.get(id=property_id)
+        serializer.save(user=self.request.user, property=property_obj)
+    
+    @action(detail=False, methods=['post'])
+    def toggle(self, request):
+        property_id = request.data.get('property_id')
+        try:
+            property_obj = Property.objects.get(id=property_id)
+            favorite, created = Favorite.objects.get_or_create(
+                user=request.user, 
+                property=property_obj
+            )
+            if not created:
+                favorite.delete()
+                return Response({'favorited': False})
+            return Response({'favorited': True})
+        except Property.DoesNotExist:
+            return Response({'error': 'Property not found'}, status=404)
+
+
+# Authentication Views
+class RegisterView(APIView):
+    permission_classes = [permissions.AllowAny]
+    
+    def post(self, request):
+        serializer = UserRegistrationSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            refresh = RefreshToken.for_user(user)
+            return Response({
+                'user': CustomUserSerializer(user).data,
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+            }, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class LoginView(APIView):
+    permission_classes = [permissions.AllowAny]
+    
+    def post(self, request):
+        serializer = UserLoginSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.validated_data['user']
+            refresh = RefreshToken.for_user(user)
+            return Response({
+                'user': CustomUserSerializer(user).data,
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+            })
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class LogoutView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def post(self, request):
+        try:
+            refresh_token = request.data["refresh"]
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+            return Response({'message': 'Successfully logged out'})
+        except Exception as e:
+            return Response({'error': 'Invalid token'}, status=400)
+
+
+# Dashboard Views
+class DashboardStatsView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get(self, request):
+        stats = {
+            'total_properties': Property.objects.count(),
+            'available_properties': Property.objects.filter(status='available').count(),
+            'total_bookings': Booking.objects.count(),
+            'pending_bookings': Booking.objects.filter(status='pending').count(),
+            'total_reviews': Review.objects.count(),
+            'average_rating': Review.objects.aggregate(avg=Avg('rating'))['avg'] or 0
+        }
+        serializer = DashboardStatsSerializer(stats)
+        return Response(serializer.data)
+
+
+class LandlordStatsView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get(self, request):
+        if request.user.user_type != 'landlord':
+            return Response({'error': 'Khong co quyen truy cap'}, status=403)
+        
+        my_properties = Property.objects.filter(owner=request.user)
+        
+        bookings = Booking.objects.filter(property__owner=request.user)
+        
+        stats = {
+            
+            'my_properties': my_properties.count(),
+            'total_bookings': bookings.count(),
+            'pending_bookings': bookings.filter(status='pending').count(),
+            'confirmed_bookings': bookings.filter(status='confirmed').count(),
+            'total_revenue': bookings.filter(status='completed').aggregate(
+                total=Sum('total_amount'))['total'] or 0,
+            
+            'average_rating': Review.objects.filter(
+                property__owner=request.user).aggregate(avg=Avg('rating'))['avg'] or 0
+        }
+        
+        serializer = LandlordStatsSerializer(stats)
+        
+        
+        return Response(serializer.data)
+        
+        
+    
+    
+            
+from rest_framework import viewsets, status, permissions
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework_simplejwt.tokens import RefreshToken
+from django.contrib.auth import login, logout
+from django.db.models import Avg, Count, Sum
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import SearchFilter, OrderingFilter
+from .models import Property, Booking, Review, Contact, CustomUser, Favorite
+from .serializers import (
+    PropertySerializer, PropertyListSerializer, PropertyCreateSerializer,
+    BookingSerializer, ReviewSerializer, ContactSerializer, CustomUserSerializer,
+    UserRegistrationSerializer, UserLoginSerializer, FavoriteSerializer,
+    DashboardStatsSerializer, LandlordStatsSerializer, TenantStatsSerializer
+)
+
+{{ ... }}
+
+class FavoriteViewSet(viewsets.ModelViewSet):
+    serializer_class = FavoriteSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        return Favorite.objects.filter(user=self.request.user)
+    
+    def perform_create(self, serializer):
+        property_id = serializer.validated_data.get('property_id')
+        property_obj = Property.objects.get(id=property_id)
+        serializer.save(user=self.request.user, property=property_obj)
+    
+    @action(detail=False, methods=['post'])
+    def toggle(self, request):
+        property_id = request.data.get('property_id')
+        try:
+            property_obj = Property.objects.get(id=property_id)
+            favorite, created = Favorite.objects.get_or_create(
+                user=request.user, 
+                property=property_obj
+            )
+            if not created:
+                favorite.delete()
+                return Response({'favorited': False})
+            return Response({'favorited': True})
+        except Property.DoesNotExist:
+            return Response({'error': 'Property not found'}, status=404)
+
+
+# Authentication Views
+class RegisterView(APIView):
+    permission_classes = [permissions.AllowAny]
+    
+    def post(self, request):
+        serializer = UserRegistrationSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            refresh = RefreshToken.for_user(user)
+            return Response({
+                'user': CustomUserSerializer(user).data,
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+            }, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class LoginView(APIView):
+    permission_classes = [permissions.AllowAny]
+    
+    def post(self, request):
+        serializer = UserLoginSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.validated_data['user']
+            refresh = RefreshToken.for_user(user)
+            return Response({
+                'user': CustomUserSerializer(user).data,
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+            })
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class LogoutView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def post(self, request):
+        try:
+            refresh_token = request.data["refresh"]
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+            return Response({'message': 'Successfully logged out'})
+        except Exception as e:
+            return Response({'error': 'Invalid token'}, status=400)
+
+
+# Dashboard Views
+class DashboardStatsView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get(self, request):
+        stats = {
+            'total_properties': Property.objects.count(),
+            'available_properties': Property.objects.filter(status='available').count(),
+            'total_bookings': Booking.objects.count(),
+            'pending_bookings': Booking.objects.filter(status='pending').count(),
+            'total_reviews': Review.objects.count(),
+            'average_rating': Review.objects.aggregate(avg=Avg('rating'))['avg'] or 0
+        }
+        serializer = DashboardStatsSerializer(stats)
+        return Response(serializer.data)
+
+
+class LandlordStatsView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get(self, request):
+        if request.user.user_type != 'landlord':
+            return Response({'error': 'Only landlords can access this'}, status=403)
+        
+        my_properties = Property.objects.filter(owner=request.user)
+        bookings = Booking.objects.filter(property__owner=request.user)
+        
+        stats = {
+            'my_properties': my_properties.count(),
+            'total_bookings': bookings.count(),
+            'pending_bookings': bookings.filter(status='pending').count(),
+            'confirmed_bookings': bookings.filter(status='confirmed').count(),
+            'total_revenue': bookings.filter(status='completed').aggregate(
+                total=Sum('total_amount'))['total'] or 0,
+            'average_rating': Review.objects.filter(
+                property__owner=request.user).aggregate(avg=Avg('rating'))['avg'] or 0
+        }
+        serializer = LandlordStatsSerializer(stats)
+        return Response(serializer.data)
+
+
+class TenantStatsView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get(self, request):
+        if request.user.user_type != 'tenant':
+            return Response({'error': 'Only tenants can access this'}, status=403)
+        
+        bookings = Booking.objects.filter(tenant=request.user)
+        
+        stats = {
+            
+            'my_bookings': bookings.count(),
+            'pending_bookings': bookings.filter(status='pending').count(),
+            'confirmed_bookings': bookings.filter(status='confirmed').count(),
+            'completed_bookings': bookings.filter(status='completed').count(),
+            'favorite_properties': Favorite.objects.filter(user=request.user).count(),
+            'total_spent': bookings.filter(status='completed').aggregate(
+                total=Sum('total_amount'))['total'] or 0
+        }
+        
+        serializer = TenantStatsSerializer(stats)
+        
+        return Response(serializer.data)
             
             
             
