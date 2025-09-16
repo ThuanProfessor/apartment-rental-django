@@ -192,7 +192,7 @@ class RegisterView(APIView):
 class LoginAPIView(APIView):
     permission_classes = [permissions.AllowAny]
     
-    def post(self, response):
+    def post(self, request):
         serializer = UserLoginSerializer(data=request.data)
         
         if serializers.is_valid:
