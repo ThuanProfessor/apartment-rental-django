@@ -1,19 +1,11 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.utils.html import format_html
-from apartment_rental.models import CustomUser, Property, PropertyImage, Booking, Review, Contact
+from apartment_rental.models import CustomUser, Property, PropertyImage, Booking, Review, Contact, Favorite
 
-
-
-# admin.site.register(CustomUser)
-# admin.site.register(Property)
-# admin.site.register(PropertyImage)
-# admin.site.register(Booking)
-# admin.site.register(Review)
-# admin.site.register(Contact)
-
+# Customize default admin site
 admin.site.site_header = "Hệ thống quản trị cho thuê căn hộ"
-admin.site.site_title = "Quản trị căn hộ"
+admin.site.site_title = "Admin Cho thuê căn hộ"
 admin.site.index_title = "Chào mừng đến với hệ thống quản trị"
 
 
@@ -71,12 +63,6 @@ class PropertyAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
-    
-    class Media:
-        css = {
-            'all': ('static/css/admin_custom.css',)
-        }
-        js = ('static/js/admin_custom.js',)
 
 
 @admin.register(Booking)
@@ -100,4 +86,12 @@ class ContactAdmin(admin.ModelAdmin):
     list_display = ('property', 'tenant', 'phone_number', 'created_at')
     list_filter = ('created_at',)
     search_fields = ('property__title', 'tenant__username', 'message')
+    readonly_fields = ('created_at',)
+
+
+@admin.register(Favorite)
+class FavoriteAdmin(admin.ModelAdmin):
+    list_display = ('user', 'property', 'created_at')
+    list_filter = ('created_at', 'property__property_type')
+    search_fields = ('user__username', 'property__title')
     readonly_fields = ('created_at',)

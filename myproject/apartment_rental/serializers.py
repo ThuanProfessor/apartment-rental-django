@@ -1,4 +1,3 @@
-
 from rest_framework import serializers
 from rest_framework.serializers import ModelSerializer
 from django.contrib.auth import authenticate
@@ -12,12 +11,14 @@ class CustomUserSerializer(serializers.ModelSerializer):
         fields = ['id', 'username', 'email', 'first_name', 'last_name', 
                  'user_type', 'phone_number', 'avatar', 'date_joined']
         read_only_fields = ['id', 'date_joined']
+        ref_name = 'CustomUser'
 
 
 class PropertyImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = PropertyImage
         fields = ['id', 'image', 'is_main']
+        ref_name = 'PropertyImage'
 
 
 class PropertySerializer(serializers.ModelSerializer):
@@ -31,6 +32,7 @@ class PropertySerializer(serializers.ModelSerializer):
                  'price', 'deposit', 'status', 'available_from', 'created_at',
                  'updated_at', 'images']
         read_only_fields = ['id', 'created_at', 'updated_at']
+        ref_name = 'PropertyDetail'
 
 
 class PropertyCreateSerializer(serializers.ModelSerializer):
@@ -39,20 +41,23 @@ class PropertyCreateSerializer(serializers.ModelSerializer):
         fields = ['title', 'description', 'property_type', 'address', 
                  'district', 'city', 'area', 'bedrooms', 'bathrooms',
                  'price', 'deposit', 'available_from']
+        ref_name = 'PropertyCreate'
+
 
 class PropertyListSerializer(serializers.ModelSerializer):
     owner_name = serializers.CharField(source='owner.username', read_only=True)
     main_image = serializers.SerializerMethodField()
-    is_favorite = serializers.SerializerMethodField()
+    is_favorited = serializers.SerializerMethodField()
     
     class Meta:
         model = Property
         fields = ['id', 'title', 'property_type', 'district', 'city', 
                  'area', 'bedrooms', 'bathrooms', 'price', 'status', 
                  'available_from', 'owner_name', 'main_image', 'is_favorited']
+        ref_name = 'PropertyList'
         
     def get_main_image(self, obj):
-        main_image = obj.image.filter(is_main=True).first()
+        main_image = obj.images.filter(is_main=True).first()
         if main_image:
             return main_image.image.url
         elif obj.images.exists():
@@ -61,25 +66,25 @@ class PropertyListSerializer(serializers.ModelSerializer):
     
     def get_is_favorited(self, obj):
         request = self.context.get('request')
-        
         if request and request.user.is_authenticated:
-            return obj.favorited_by_filter(id=request.user).exists()
+            return obj.favorited_by.filter(user=request.user).exists()
         return False
-    
+
+
 class UserRegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only = True)
     password_confirm = serializers.CharField(write_only = True)
     
     class Meta:
         model = CustomUser
-        fields =  ['id', 'title', 'property_type', 'district', 'city', 
-                 'area', 'bedrooms', 'bathrooms', 'price', 'status', 
-                 'available_from', 'owner_name', 'main_image', 'is_favorited']
+        fields =  ['id', 'username', 'email', 'password', 'password_confirm', 
+                 'first_name', 'last_name', 'user_type', 'phone_number']
+        ref_name = 'UserRegister'
         
         
     def validate(self, attrs):
         if attrs['password'] != attrs['password_confirm']:
-            raise serializers.validationError({"password": "Password fields didn't match."})
+            raise serializers.ValidationError({"password": "Password fields didn't match."})
         
         return attrs
     
@@ -95,8 +100,6 @@ class UserRegisterSerializer(serializers.ModelSerializer):
 class UserLoginSerializer(serializers.Serializer):
     username = serializers.CharField()
     password = serializers.CharField(write_only=True)
-    
-    
     
     def validate(self, attrs):
         username = attrs.get('username')
@@ -119,12 +122,14 @@ class UserLoginSerializer(serializers.Serializer):
 #Khoi phuc mat khau
 class PasswordResetSerializer(serializers.Serializer):
     email  = serializers.EmailField()
-    
-    
+    ref_name = 'PasswordReset'
+
+
 class ChangePasswordSerializer(serializers.Serializer):
     old_password = serializers.CharField(required=True)
     new_password = serializers.CharField(required=True)
     new_password_confirm = serializers.CharField(required=True)
+    ref_name = 'ChangePassword'
     
     def validate(self, attrs):
         if attrs['new_password'] != attrs['new_password_confirm']:
@@ -136,13 +141,13 @@ class ChangePasswordSerializer(serializers.Serializer):
 class PropertyListSerializer(serializers.ModelSerializer):
     owner_name = serializers.CharField(source='owner.username', read_only=True)
     main_image = serializers.SerializerMethodField()
-    is_favorited = serializers.SerializerMethodField()
     
     class Meta:
         model = Property
         fields = ['id', 'title', 'property_type', 'district', 'city', 
                  'area', 'bedrooms', 'bathrooms', 'price', 'status', 
-                 'available_from', 'owner_name', 'main_image', 'is_favorited']
+                 'available_from', 'owner_name', 'main_image']
+        ref_name = 'PropertyList'
     
     def get_main_image(self, obj):
         main_image = obj.images.filter(is_main=True).first()
@@ -151,12 +156,6 @@ class PropertyListSerializer(serializers.ModelSerializer):
         elif obj.images.exists():
             return obj.images.first().image.url
         return None
-    
-    def get_is_favorited(self, obj):
-        request = self.context.get('request')
-        if request and request.user.is_authenticated:
-            return obj.favorited_by.filter(user=request.user).exists()
-        return False
 
 
 # Authentication Serializers
@@ -168,6 +167,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         model = CustomUser
         fields = ['username', 'email', 'password', 'password_confirm', 
                  'first_name', 'last_name', 'user_type', 'phone_number']
+        ref_name = 'UserRegistration'
     
     def validate(self, attrs):
         if attrs['password'] != attrs['password_confirm']:
@@ -186,6 +186,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 class UserLoginSerializer(serializers.Serializer):
     username = serializers.CharField()
     password = serializers.CharField(write_only=True)
+    ref_name = 'UserLogin'
     
     def validate(self, attrs):
         username = attrs.get('username')
@@ -205,12 +206,14 @@ class UserLoginSerializer(serializers.Serializer):
 
 class PasswordResetSerializer(serializers.Serializer):
     email = serializers.EmailField()
+    ref_name = 'PasswordReset'
 
 
 class PasswordChangeSerializer(serializers.Serializer):
     old_password = serializers.CharField(write_only=True)
     new_password = serializers.CharField(write_only=True, validators=[validate_password])
     new_password_confirm = serializers.CharField(write_only=True)
+    ref_name = 'PasswordChange'
     
     def validate(self, attrs):
         if attrs['new_password'] != attrs['new_password_confirm']:
@@ -227,6 +230,7 @@ class FavoriteSerializer(serializers.ModelSerializer):
         model = Favorite
         fields = ['id', 'property', 'property_id', 'created_at']
         read_only_fields = ['id', 'created_at']
+        ref_name = 'Favorite'
 
 
 # Dashboard Statistics Serializers
@@ -237,6 +241,7 @@ class DashboardStatsSerializer(serializers.Serializer):
     pending_bookings = serializers.IntegerField()
     total_reviews = serializers.IntegerField()
     average_rating = serializers.FloatField()
+    ref_name = 'DashboardStats'
 
 
 class LandlordStatsSerializer(serializers.Serializer):
@@ -246,6 +251,7 @@ class LandlordStatsSerializer(serializers.Serializer):
     confirmed_bookings = serializers.IntegerField()
     total_revenue = serializers.DecimalField(max_digits=12, decimal_places=0)
     average_rating = serializers.FloatField()
+    ref_name = 'LandlordStats'
 
 
 class TenantStatsSerializer(serializers.Serializer):
@@ -255,8 +261,9 @@ class TenantStatsSerializer(serializers.Serializer):
     completed_bookings = serializers.IntegerField()
     favorite_properties = serializers.IntegerField()
     total_spent = serializers.DecimalField(max_digits=12, decimal_places=0)
-                
-            
+    ref_name = 'TenantStats'
+
+
 # thêm mới serializer cho Booking, Review, Contact
 
 
@@ -270,6 +277,7 @@ class BookingSerializer(serializers.ModelSerializer):
         fields = ['id', 'property', 'property_id', 'tenant', 'start_date', 
                  'end_date', 'total_amount', 'status', 'notes', 'created_at']
         read_only_fields = ['id', 'total_amount', 'created_at']
+        ref_name = 'Booking'
     
     def create(self, validated_data):
         property_id = validated_data.pop('property_id')
@@ -293,6 +301,7 @@ class ReviewSerializer(serializers.ModelSerializer):
         fields = ['id', 'property', 'property_id', 'reviewer', 'rating', 
                  'comment', 'created_at']
         read_only_fields = ['id', 'created_at']
+        ref_name = 'Review'
 
 
 class ContactSerializer(serializers.ModelSerializer):
@@ -305,22 +314,4 @@ class ContactSerializer(serializers.ModelSerializer):
         fields = ['id', 'property', 'property_id', 'tenant', 'message', 
                  'phone_number', 'created_at']
         read_only_fields = ['id', 'created_at']
-
-
-class PropertyListSerializer(serializers.ModelSerializer):
-    owner_name = serializers.CharField(source='owner.username', read_only=True)
-    main_image = serializers.SerializerMethodField()
-    
-    class Meta:
-        model = Property
-        fields = ['id', 'title', 'property_type', 'district', 'city', 
-                 'area', 'bedrooms', 'bathrooms', 'price', 'status', 
-                 'available_from', 'owner_name', 'main_image']
-    
-    def get_main_image(self, obj):
-        main_image = obj.images.filter(is_main=True).first()
-        if main_image:
-            return main_image.image.url
-        elif obj.images.exists():
-            return obj.images.first().image.url
-        return None
+        ref_name = 'Contact'

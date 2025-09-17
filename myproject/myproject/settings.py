@@ -61,6 +61,13 @@ INSTALLED_APPS = [
     'drf_yasg',
 ]
 
+OAUTH2_PROVIDER = {
+    'SCOPES': {
+        'read': 'Read scope',
+        'write': 'Write scope',
+    },
+    'PKCE_REQUIRED': True,  # nên bật cho SPA
+}
 
 
 # Use Cloudinary for CKEditor uploads

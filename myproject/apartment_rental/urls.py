@@ -1,13 +1,8 @@
-from curses import ACS_VLINE
-from os import name
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+from rest_framework_simplejwt.views import TokenRefreshView
 from . import views
 
-
-
-
-from rest_framework import permissions
 app_name = 'apartment_rental'
 
 # API Router for ViewSets
@@ -19,22 +14,27 @@ router.register(r'contacts', views.ContactViewSet, basename='contact')
 router.register(r'users', views.UserViewSet, basename='user')
 router.register(r'favorites', views.FavoriteViewSet, basename='favorite')
 
-
-
 urlpatterns = [
-    # API endpoints
+    path('o/', include('oauth2_provider.urls', namespace='oauth2_provider')),
+  
     path('', include(router.urls)),
     
-    path('/api/auth/', include('rest_framework.url')),
+    # Xac thuc
+    path('api/auth/register/', views.RegisterView.as_view(), name='register'),
+    path('api/auth/login/', views.LoginView.as_view(), name='login'),
+    path('api/auth/logout/', views.LogoutView.as_view(), name='logout'),
+    path('api/auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('api/auth/password-reset/', views.PasswordResetView.as_view(), name='password_reset'),
+    path('api/auth/password-change/', views.PasswordChangeView.as_view(), name='password_change'),
     
-    path('/api/auth/register/', views.RegisterView.as_view(), name='register'),
-    path('/api/auth/login/', views.LoginView.as_view(), name='login'),
-    path('/api/auth/logout/', views.LogoutView.as_view(), name='logout'),
+    # File
+    path('api/upload/', views.FileUploadView.as_view(), name='file_upload'),
     
-    path('/api/dashboard/stats/', views.DashBoardStatsview.as_view(), name='dashboard'),
-    path('/api/dashboard/landlord-stats/', views.LandlordStatsView.as_view(), name='landlord'),
-    path('/api/dashboard/tenant-stats/', views.TenantStatsView.as_view(), name='tenant'),
+    # Dashboard
+    path('api/dashboard/stats/', views.DashboardStatsView.as_view(), name='dashboard-stats'),
+    path('api/dashboard/landlord-stats/', views.LandlordStatsView.as_view(), name='landlord-stats'),
+    path('api/dashboard/tenant-stats/', views.TenantStatsView.as_view(), name='tenant-stats'),
     
+    # DRF
+    path('api/auth/', include('rest_framework.urls')),
 ]
-
-
