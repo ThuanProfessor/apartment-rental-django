@@ -20,6 +20,7 @@ django-ckeditor==6.7.3
 django-cors-headers==4.7.0
 django-filter==25.1
 django-js-asset==3.1.2
+django-phonenumber-field==8.1.0
 djangorestframework==3.16.1
 djangorestframework_simplejwt==5.5.1
 Flask==3.1.2
