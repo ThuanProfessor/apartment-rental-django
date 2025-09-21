@@ -2,37 +2,98 @@ from rest_framework import serializers
 from rest_framework.serializers import ModelSerializer
 from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
-from .models import CustomUser, Property, PropertyImage, Booking, Review, Contact, Favorite
+from datetime import date
+from .models import CustomUser, Property, PropertyImage, Booking, Review, Contact, Favorite, ViewingSchedule
 
 
 class CustomUserSerializer(serializers.ModelSerializer):
+    avatar = serializers.SerializerMethodField()
     class Meta:
         model = CustomUser
         fields = ['id', 'username', 'email', 'first_name', 'last_name', 
                  'user_type', 'phone_number', 'avatar', 'date_joined']
         read_only_fields = ['id', 'date_joined']
         ref_name = 'CustomUser'
+        extra_kwargs = {
+            'phone_number': {'required': False, 'allow_null': True},
+            'email': {'required': False},
+            'first_name': {'required': False},
+            'last_name': {'required': False},
+        }
+
+    def validate_phone_number(self, value):
+        # Chấp nhận các dạng: +84xxxxxxxxx, 0xxxxxxxxx, rỗng
+        if not value:
+            return value
+        s = str(value).strip()
+        if s.startswith('+84'):
+            return s
+        if s.startswith('0') and len(s) >= 9:
+            return f"+84{s[1:]}"
+        # Nếu không đúng định dạng, vẫn trả về để PhoneNumberField xử lý
+        return s
+
+    def get_avatar(self, obj):
+        try:
+            # Standard case: CloudinaryField with storage returns resource having .url
+            url = obj.avatar.url if obj.avatar else None
+            if url:
+                return url
+        except Exception:
+            pass
+        
+        # Fallbacks: handle when avatar stores a raw public_id or a full URL string
+        try:
+            val = getattr(obj, 'avatar', None)
+            if not val:
+                return None
+            # If it's already a URL string
+            if isinstance(val, str) and (val.startswith('http://') or val.startswith('https://')):
+                return val
+            # Otherwise generate URL from public_id via Cloudinary helper
+            try:
+                from cloudinary.utils import cloudinary_url
+                url, _ = cloudinary_url(str(val), secure=True)
+                return url
+            except Exception:
+                return None
+        except Exception:
+            return None
 
 
 class PropertyImageSerializer(serializers.ModelSerializer):
+    image = serializers.SerializerMethodField()
     class Meta:
         model = PropertyImage
         fields = ['id', 'image', 'is_main']
         ref_name = 'PropertyImage'
 
+    def get_image(self, obj):
+        try:
+            return obj.image.url if obj.image else None
+        except Exception:
+            return None
+
 
 class PropertySerializer(serializers.ModelSerializer):
     owner = CustomUserSerializer(read_only=True)
     images = PropertyImageSerializer(many=True, read_only=True)
+    is_favorited = serializers.SerializerMethodField()
     
     class Meta:
         model = Property
         fields = ['id', 'title', 'description', 'property_type', 'owner',
                  'address', 'district', 'city', 'area', 'bedrooms', 'bathrooms',
                  'price', 'deposit', 'status', 'available_from', 'created_at',
-                 'updated_at', 'images']
+                 'updated_at', 'images', 'is_favorited']
         read_only_fields = ['id', 'created_at', 'updated_at']
         ref_name = 'PropertyDetail'
+    
+    def get_is_favorited(self, obj):
+        request = self.context.get('request')
+        if request and request.user and request.user.is_authenticated:
+            return obj.favorited_by.filter(user=request.user).exists()
+        return False
 
 
 class PropertyCreateSerializer(serializers.ModelSerializer):
@@ -40,8 +101,21 @@ class PropertyCreateSerializer(serializers.ModelSerializer):
         model = Property
         fields = ['title', 'description', 'property_type', 'address', 
                  'district', 'city', 'area', 'bedrooms', 'bathrooms',
-                 'price', 'deposit', 'available_from']
+                 'price', 'deposit', 'available_from', 'status']
+        extra_kwargs = {
+            'bedrooms': {'required': False},
+            'bathrooms': {'required': False},
+            'deposit': {'required': False},
+            'available_from': {'required': False},
+            'status': {'required': False},
+        }
         ref_name = 'PropertyCreate'
+    
+    def create(self, validated_data):
+        # If available_from not provided, default to today
+        if not validated_data.get('available_from'):
+            validated_data['available_from'] = date.today()
+        return super().create(validated_data)
 
 
 class PropertyListSerializer(serializers.ModelSerializer):
@@ -138,27 +212,6 @@ class ChangePasswordSerializer(serializers.Serializer):
     
 
 
-class PropertyListSerializer(serializers.ModelSerializer):
-    owner_name = serializers.CharField(source='owner.username', read_only=True)
-    main_image = serializers.SerializerMethodField()
-    
-    class Meta:
-        model = Property
-        fields = ['id', 'title', 'property_type', 'district', 'city', 
-                 'area', 'bedrooms', 'bathrooms', 'price', 'status', 
-                 'available_from', 'owner_name', 'main_image']
-        ref_name = 'PropertyList'
-    
-    def get_main_image(self, obj):
-        main_image = obj.images.filter(is_main=True).first()
-        if main_image:
-            return main_image.image.url
-        elif obj.images.exists():
-            return obj.images.first().image.url
-        return None
-
-
-# Authentication Serializers
 class UserRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, validators=[validate_password])
     password_confirm = serializers.CharField(write_only=True)
@@ -315,3 +368,24 @@ class ContactSerializer(serializers.ModelSerializer):
                  'phone_number', 'created_at']
         read_only_fields = ['id', 'created_at']
         ref_name = 'Contact'
+
+
+# Agent list serializer
+class AgentListSerializer(serializers.ModelSerializer):
+    properties_count = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = CustomUser
+        fields = ['id', 'username', 'first_name', 'last_name', 'avatar', 'properties_count']
+        ref_name = 'AgentList'
+
+
+class ViewingScheduleSerializer(serializers.ModelSerializer):
+    property = PropertyListSerializer(read_only=True)
+    tenant = CustomUserSerializer(read_only=True)
+    property_id = serializers.UUIDField(write_only=True)
+    
+    class Meta:
+        model = ViewingSchedule
+        fields = '__all__'
+        ref_name = 'ViewingSchedule'

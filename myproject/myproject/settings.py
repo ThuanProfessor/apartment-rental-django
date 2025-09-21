@@ -34,7 +34,7 @@ SECRET_KEY = 'django-insecure-3n#^7tl0unp$g$rzs-b7v_m2a!=c9k)#a4pl%-7zgcve7ru+8z
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost ', '127.0.0.1', '34ddb353b909.ngrok-free.app']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '34ddb353b909.ngrok-free.app']
 
 
 # Application definition
@@ -59,6 +59,9 @@ INSTALLED_APPS = [
     'ckeditor_uploader',
     'oauth2_provider',
     'drf_yasg',
+    # Cloudinary apps
+    'cloudinary',
+    'cloudinary_storage',
 ]
 
 OAUTH2_PROVIDER = {
@@ -148,6 +151,9 @@ CLOUDINARY_STORAGE = {
     'API_SECRET': 'kpR83NbacJprFxwz2jCGxt3nb4E',
 }
 
+# Use Cloudinary as default media storage
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
 
@@ -200,9 +206,14 @@ SIMPLE_JWT = {
 }
 
 REST_FRAMEWORK = {
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 12,
+    'PAGE_SIZE_QUERY_PARAM': 'page_size',
+
+
+    
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-        'rest_framework.authentication.SessionAuthentication',
         'oauth2_provider.contrib.rest_framework.OAuth2Authentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [

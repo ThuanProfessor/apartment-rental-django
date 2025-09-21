@@ -143,10 +143,55 @@ class Contact(models.Model):
     message = models.TextField()
     phone_number = PhoneNumberField()
     
+    # Add status tracking for messages
+    STATUS_CHOICES = [
+        ('unread', 'Chưa đọc'),
+        ('read', 'Đã đọc'),
+        ('replied', 'Đã trả lời'),
+    ]
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='unread')
+    
     created_at = models.DateTimeField(auto_now_add=True)
     
     def __str__(self):
         return f"Contact for {self.property.title}"
+
+
+# Viewing Schedule Model for property appointments
+class ViewingSchedule(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Chờ xác nhận'),
+        ('confirmed', 'Đã xác nhận'),
+        ('cancelled', 'Đã hủy'),
+        ('completed', 'Hoàn thành'),
+    ]
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name='viewing_schedules')
+    tenant = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='viewing_schedules')
+    
+    preferred_date = models.DateField()
+    preferred_time = models.TimeField()
+    alternative_date = models.DateField(blank=True, null=True)
+    alternative_time = models.TimeField(blank=True, null=True)
+    
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    notes = models.TextField(blank=True)
+    
+    # Response from landlord
+    landlord_response = models.TextField(blank=True)
+    confirmed_date = models.DateField(blank=True, null=True)
+    confirmed_time = models.TimeField(blank=True, null=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"Viewing {self.property.title} by {self.tenant.username} on {self.preferred_date}"
+
 
 #Yêu thích
 class Favorite(models.Model):
@@ -159,9 +204,4 @@ class Favorite(models.Model):
         ordering = ['-created_at']
         
     def __str__(self):
-        return f"{self.user.name} - {self.property.title}"
-    
-    
-    
-    
-    
+        return f"{self.user.username} - {self.property.title}"

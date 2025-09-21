@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.utils.html import format_html
-from apartment_rental.models import CustomUser, Property, PropertyImage, Booking, Review, Contact, Favorite
+from apartment_rental.models import CustomUser, Property, PropertyImage, Booking, Review, Contact, Favorite, ViewingSchedule
 
 # Customize default admin site
 admin.site.site_header = "Hệ thống quản trị cho thuê căn hộ"
@@ -95,3 +95,30 @@ class FavoriteAdmin(admin.ModelAdmin):
     list_filter = ('created_at', 'property__property_type')
     search_fields = ('user__username', 'property__title')
     readonly_fields = ('created_at',)
+
+
+@admin.register(ViewingSchedule)
+class ViewingScheduleAdmin(admin.ModelAdmin):
+    list_display = ('property', 'tenant', 'preferred_date', 'preferred_time', 'status', 'created_at')
+    list_filter = ('status', 'preferred_date', 'created_at')
+    search_fields = ('property__title', 'tenant__username', 'notes')
+    readonly_fields = ('created_at', 'updated_at')
+    
+    fieldsets = (
+        ('Basic Info', {
+            'fields': ('property', 'tenant', 'status')
+        }),
+        ('Preferred Schedule', {
+            'fields': ('preferred_date', 'preferred_time', 'alternative_date', 'alternative_time')
+        }),
+        ('Confirmed Schedule', {
+            'fields': ('confirmed_date', 'confirmed_time')
+        }),
+        ('Notes', {
+            'fields': ('notes', 'landlord_response')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
