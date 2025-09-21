@@ -1,6 +1,7 @@
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework import serializers
 from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -179,7 +180,7 @@ class ContactViewSet(viewsets.ModelViewSet):
         serializer.save(tenant=self.request.user, property=property_obj)
 
 
-class UserViewSet(viewsets.ReadOnlyModelViewSet):
+class UserViewSet(viewsets.ModelViewSet):
     queryset = CustomUser.objects.all()
     serializer_class = CustomUserSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -191,12 +192,15 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
         return super().get_permissions()
     
     def get_queryset(self):
-        # Only return current user for list endpoints
-        if getattr(self, 'action', None) == 'retrieve':
+        action = getattr(self, 'action', None)
+        # Public profile view (AgentProfile.jsx): allow retrieving any user
+        if action == 'retrieve':
             return CustomUser.objects.all()
-        if not self.request.user.is_authenticated:
+        # For other actions, only operate on current user
+        req = getattr(self, 'request', None)
+        if not req or not getattr(req, 'user', None) or not req.user.is_authenticated:
             return CustomUser.objects.none()
-        return CustomUser.objects.filter(id=self.request.user.id)
+        return CustomUser.objects.filter(id=req.user.id)
     
     @action(detail=False, methods=['get'])
     def me(self, request):
@@ -229,6 +233,36 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
         serializer = AgentListSerializer(qs, many=True)
         return Response(serializer.data)
 
+    @action(detail=False, methods=['patch'], url_path='update-profile', parser_classes=[MultiPartParser, FormParser])
+    def update_profile(self, request):
+        user = request.user
+
+        # Diagnostics (temporarily, to debug 500)
+        print(f"update_profile Content-Type: {request.META.get('CONTENT_TYPE')}")
+        print(f"update_profile FILES keys: {list(request.FILES.keys())}")
+
+        # Avatar file (optional)
+        if 'avatar' in request.FILES:
+            avatar_file = request.FILES['avatar']
+            try:
+                # For CloudinaryField, assign the file and save the model
+                user.avatar = avatar_file
+                user.save(update_fields=['avatar'])
+                print(f"Avatar updated for user {user.username}")
+            except Exception as e:
+                print(f"Avatar save error: {e}")
+                return Response({'error': f'Avatar upload failed: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        # Other fields
+        try:
+            serializer = self.get_serializer(user, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return Response({'error': f'Profile update failed: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class RegisterView(APIView):
     permission_classes = [permissions.AllowAny]
@@ -349,39 +383,55 @@ class FileUploadView(APIView):
     def post(self, request):
         print(f"FileUpload request data: {request.data}")  # Debug log
         print(f"FileUpload request files: {request.FILES}")  # Debug log
-        file_type = request.data.get('type')
+        
+        # Basic diagnostics
+        print(f"Content-Type: {request.META.get('CONTENT_TYPE')}")
+        print(f"FILES keys: {list(request.FILES.keys())}")
+        
+        file_type = (request.data.get('type') or '').strip().lower()
+        # If client forgot to send 'type' but there's exactly one file, assume avatar for this endpoint
+        if not file_type and len(request.FILES) == 1:
+            file_type = 'avatar'
+        
         if file_type == 'avatar':
-            avatar = request.FILES.get('avatar')
-            print(f"Avatar file: {avatar}")  # Debug log
-            if not avatar:
+            # Accept common field names and fallback to first file
+            avatar_file = (
+                request.FILES.get('avatar')
+                or request.FILES.get('file')
+                or (next(iter(request.FILES.values())) if request.FILES else None)
+            )
+            print(f"Avatar file: {avatar_file}")  # Debug log
+            if not avatar_file:
                 return Response({'error': 'Không cung cấp ảnh'}, status=status.HTTP_400_BAD_REQUEST)
             
             user = request.user
             print(f"User: {user.id} - {user.username}")  # Debug log
             
             try:
-                # Upload directly to Cloudinary
-                import cloudinary.uploader
-                upload_result = cloudinary.uploader.upload(
-                    avatar,
-                    folder="avatars",  # Organize in folder
-                    public_id=f"user_{user.id}",  # Unique ID
-                    overwrite=True,  # Replace existing
-                    resource_type="image"
-                )
-                print(f"Cloudinary upload result: {upload_result}")  # Debug log
+                # Save directly via Cloudinary-backed DEFAULT_FILE_STORAGE
+                # This mirrors how PropertyImage uploads work and avoids manual SDK calls
+                user.avatar.save(avatar_file.name, avatar_file, save=True)
+
+                # Build a URL to return
+                avatar_url = None
+                try:
+                    avatar_url = user.avatar.url
+                except Exception:
+                    # Fallback for safety if direct url access fails
+                    try:
+                        from cloudinary.utils import cloudinary_url
+                        avatar_url, _ = cloudinary_url(str(user.avatar), secure=True)
+                    except Exception:
+                        avatar_url = None
                 
-                # Save Cloudinary public_id to user model (CloudinaryField expects public_id)
-                public_id = upload_result.get('public_id')
-                secure_url = upload_result.get('secure_url')
-                user.avatar = public_id
-                user.save()
+                if not avatar_url:
+                    return Response({'error': 'Không thể tạo URL ảnh sau khi upload'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
                 
-                print(f"Avatar saved, public_id: {public_id}")  # Debug log
-                return Response({'avatar_url': secure_url}, status=status.HTTP_200_OK)
+                print(f"Avatar saved, url: {avatar_url}")  # Debug log
+                return Response({'avatar_url': avatar_url, 'url': avatar_url}, status=status.HTTP_200_OK)
                 
             except Exception as e:
-                print(f"Cloudinary upload error: {e}")  # Debug log
+                print(f"Avatar save error: {e}")  # Debug log
                 return Response({'error': f'Upload failed: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         elif file_type == 'property_image':
             property_id = request.data.get('property_id')

@@ -3,11 +3,13 @@ from rest_framework.serializers import ModelSerializer
 from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
 from datetime import date
+from decimal import Decimal, ROUND_HALF_UP
 from .models import CustomUser, Property, PropertyImage, Booking, Review, Contact, Favorite, ViewingSchedule
 
 
 class CustomUserSerializer(serializers.ModelSerializer):
     avatar = serializers.SerializerMethodField()
+
     class Meta:
         model = CustomUser
         fields = ['id', 'username', 'email', 'first_name', 'last_name', 
@@ -35,28 +37,20 @@ class CustomUserSerializer(serializers.ModelSerializer):
 
     def get_avatar(self, obj):
         try:
-            # Standard case: CloudinaryField with storage returns resource having .url
             url = obj.avatar.url if obj.avatar else None
             if url:
                 return url
         except Exception:
             pass
-        
-        # Fallbacks: handle when avatar stores a raw public_id or a full URL string
         try:
             val = getattr(obj, 'avatar', None)
             if not val:
                 return None
-            # If it's already a URL string
             if isinstance(val, str) and (val.startswith('http://') or val.startswith('https://')):
                 return val
-            # Otherwise generate URL from public_id via Cloudinary helper
-            try:
-                from cloudinary.utils import cloudinary_url
-                url, _ = cloudinary_url(str(val), secure=True)
-                return url
-            except Exception:
-                return None
+            from cloudinary.utils import cloudinary_url
+            url, _ = cloudinary_url(str(val), secure=True)
+            return url
         except Exception:
             return None
 
@@ -336,9 +330,11 @@ class BookingSerializer(serializers.ModelSerializer):
         property_id = validated_data.pop('property_id')
         property_obj = Property.objects.get(id=property_id)
         
-        # Calculate total amount
+        # Calculate total amount using Decimal arithmetic (avoid float)
         days = (validated_data['end_date'] - validated_data['start_date']).days
-        validated_data['total_amount'] = property_obj.price * (days / 30)
+        months = (Decimal(days) / Decimal(30)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        total = (property_obj.price * months).quantize(Decimal('1'), rounding=ROUND_HALF_UP)
+        validated_data['total_amount'] = total
         validated_data['property'] = property_obj
         
         return super().create(validated_data)
