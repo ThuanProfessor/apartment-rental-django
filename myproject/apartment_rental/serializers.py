@@ -4,7 +4,7 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
 from datetime import date
 from decimal import Decimal, ROUND_HALF_UP
-from .models import CustomUser, Property, PropertyImage, Booking, Review, Contact, Favorite, ViewingSchedule
+from .models import CustomUser, Property, PropertyImage, Booking, Review, Contact, Favorite, ViewingSchedule, Payment
 
 
 class CustomUserSerializer(serializers.ModelSerializer):
@@ -318,15 +318,18 @@ class BookingSerializer(serializers.ModelSerializer):
     property = PropertySerializer(read_only=True)
     tenant = CustomUserSerializer(read_only=True)
     property_id = serializers.UUIDField(write_only=True)
+    payments = serializers.SerializerMethodField()
     
     class Meta:
         model = Booking
         fields = ['id', 'property', 'property_id', 'tenant', 'start_date', 
-                 'end_date', 'total_amount', 'status', 'notes', 'created_at']
-        read_only_fields = ['id', 'total_amount', 'created_at']
+                 'end_date', 'total_amount', 'status', 'notes', 'created_at',
+                 'deposit_amount', 'deposit_status', 'deposit_paid_at', 'payments']
+        read_only_fields = ['id', 'total_amount', 'created_at', 'deposit_paid_at']
         ref_name = 'Booking'
     
     def create(self, validated_data):
+        print(f"DEBUG: validated_data = {validated_data}")
         property_id = validated_data.pop('property_id')
         property_obj = Property.objects.get(id=property_id)
         
@@ -337,7 +340,24 @@ class BookingSerializer(serializers.ModelSerializer):
         validated_data['total_amount'] = total
         validated_data['property'] = property_obj
         
+        # Use deposit_amount from frontend, fallback to property.deposit if not provided
+        if 'deposit_amount' not in validated_data or validated_data['deposit_amount'] is None:
+            print(f"DEBUG: Using property.deposit = {property_obj.deposit}")
+            try:
+                validated_data['deposit_amount'] = property_obj.deposit
+            except Exception:
+                validated_data['deposit_amount'] = 0
+        else:
+            print(f"DEBUG: Using frontend deposit_amount = {validated_data['deposit_amount']}")
+        
+        print(f"DEBUG: Final validated_data = {validated_data}")
         return super().create(validated_data)
+
+    def get_payments(self, obj):
+        qs = getattr(obj, 'payments', None)
+        if qs is None:
+            return []
+        return PaymentSerializer(qs.all(), many=True).data
 
 
 class ReviewSerializer(serializers.ModelSerializer):
@@ -385,3 +405,27 @@ class ViewingScheduleSerializer(serializers.ModelSerializer):
         model = ViewingSchedule
         fields = '__all__'
         ref_name = 'ViewingSchedule'
+
+
+class PaymentSerializer(serializers.ModelSerializer):
+    booking = serializers.PrimaryKeyRelatedField(read_only=True)
+    booking_id = serializers.UUIDField(write_only=True)
+    
+    class Meta:
+        model = Payment
+        fields = [
+            'id', 'booking', 'booking_id', 'amount', 'provider',
+            'vnp_TxnRef', 'vnp_OrderInfo', 'vnp_TransactionNo', 'vnp_ResponseCode',
+            'vnp_BankCode', 'vnp_PayDate', 'vnp_SecureHash', 'status',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'provider', 'vnp_TxnRef', 'status', 'created_at', 'updated_at']
+        ref_name = 'Payment'
+    
+    def create(self, validated_data):
+        booking_id = validated_data.pop('booking_id')
+        try:
+            booking = Booking.objects.get(id=booking_id)
+        except Booking.DoesNotExist:
+            raise serializers.ValidationError({'booking_id': 'Booking not found'})
+        return Payment.objects.create(booking=booking, provider='vnpay', **validated_data)

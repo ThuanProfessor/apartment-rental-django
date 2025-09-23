@@ -110,6 +110,18 @@ class Booking(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     notes = models.TextField(blank=True)
     
+    # Deposit fields
+    DEPOSIT_STATUS = [
+        ('none', 'Không đặt cọc'),
+        ('pending', 'Đang chờ thanh toán cọc'),
+        ('paid', 'Đã đặt cọc'),
+        ('failed', 'Thanh toán thất bại'),
+        ('refunded', 'Đã hoàn cọc'),
+    ]
+    deposit_amount = models.DecimalField(max_digits=12, decimal_places=0, default=0)
+    deposit_status = models.CharField(max_length=20, choices=DEPOSIT_STATUS, default='none')
+    deposit_paid_at = models.DateTimeField(blank=True, null=True)
+    
     created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:
@@ -117,6 +129,38 @@ class Booking(models.Model):
     
     def __str__(self):
         return f"Booking {self.property.title} by {self.tenant.username}"
+
+
+class Payment(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Đang chờ'),
+        ('success', 'Thành công'),
+        ('failed', 'Thất bại'),
+    ]
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='payments')
+    amount = models.DecimalField(max_digits=12, decimal_places=0)
+    provider = models.CharField(max_length=30, default='vnpay')
+    
+    # VNPay specific fields
+    vnp_TxnRef = models.CharField(max_length=64, unique=True)
+    vnp_OrderInfo = models.CharField(max_length=255, blank=True, null=True)
+    vnp_TransactionNo = models.CharField(max_length=64, blank=True, null=True)
+    vnp_ResponseCode = models.CharField(max_length=10, blank=True, null=True)
+    vnp_BankCode = models.CharField(max_length=50, blank=True, null=True)
+    vnp_PayDate = models.CharField(max_length=14, blank=True, null=True)
+    vnp_SecureHash = models.CharField(max_length=128, blank=True, null=True)
+    
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"Payment {self.vnp_TxnRef} - {self.status}"
 
 
 class Review(models.Model):

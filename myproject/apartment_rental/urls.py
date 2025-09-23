@@ -37,6 +37,11 @@ urlpatterns = [
     path('api/dashboard/landlord-stats/', views.LandlordStatsView.as_view(), name='landlord-stats'),
     path('api/dashboard/tenant-stats/', views.TenantStatsView.as_view(), name='tenant-stats'),
     
+    # Payments (VNPay)
+    path('api/payments/vnpay/initiate/', views.VNPayInitiateView.as_view(), name='vnpay-initiate'),
+    path('api/payments/vnpay/return/', views.VNPayReturnView.as_view(), name='vnpay-return'),
+    path('api/payments/vnpay/ipn/', views.VNPayIPNView.as_view(), name='vnpay-ipn'),
+     
     # DRF
     path('api/auth/', include('rest_framework.urls')),
 ]

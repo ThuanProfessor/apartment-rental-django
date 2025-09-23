@@ -247,3 +247,11 @@ pymysql.install_as_MySQLdb()
 
 client_id = 'S4MJ2pobWnutBLFxESRssNMD6suaCEn7WuzpwD0g'
 client_secret = 'qpZ3QB2OKROSawLnROOMOVPTWSazgpOhUaPQJWsXlAR1kr4BmIqtFBreOXOTY3HP8DjTOBYROmNGfDHf3rt5aAFsEmRzdRlrvTRHhLoKIB1S7VYTXYTsvpAzOgDL43ca'
+
+
+VNPAY_TMN_CODE = 'ZCLPDHUS'
+VNPAY_HASH_SECRET = '9NJLQF95551EHKJ8DTALDNOVTZSPKXTK'
+VNPAY_PAYMENT_URL = 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html'
+VNPAY_RETURN_URL = 'http://127.0.0.1:8000/api/payments/vnpay/return/'
+VNPAY_IPN_URL = 'http://127.0.0.1:8000/api/payments/vnpay/ipn/'
+FRONTEND_BASE_URL = 'http://127.0.0.1:5173'

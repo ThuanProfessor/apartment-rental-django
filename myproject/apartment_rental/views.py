@@ -10,7 +10,7 @@ from django.contrib.auth import login, logout
 from django.db.models import Avg, Count, Sum, Q
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
-from .models import Property, Booking, Review, Contact, CustomUser, Favorite, PropertyImage, ViewingSchedule
+from .models import Property, Booking, Review, Contact, CustomUser, Favorite, PropertyImage, ViewingSchedule, Payment
 from .serializers import (
     PropertySerializer, PropertyListSerializer, PropertyCreateSerializer,
     BookingSerializer, ReviewSerializer, ContactSerializer, CustomUserSerializer,
@@ -666,3 +666,162 @@ class ViewingScheduleViewSet(viewsets.ModelViewSet):
         schedule.save()
         
         return Response(ViewingScheduleSerializer(schedule).data)
+
+# ===== VNPay Deposit Integration =====
+from django.conf import settings
+from django.utils import timezone
+from django.http import HttpResponse, HttpResponseRedirect
+import hmac
+import hashlib
+from urllib.parse import urlencode
+
+class VNPayInitiateView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        booking_id = request.data.get('booking_id')
+        amount = request.data.get('amount')  # VND
+        if not booking_id:
+            return Response({'error': 'booking_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            booking = Booking.objects.get(id=booking_id)
+        except Booking.DoesNotExist:
+            return Response({'error': 'Booking not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Default deposit amount
+        if not amount:
+            amount = booking.deposit_amount or 0
+        try:
+            amount = int(amount)
+        except Exception:
+            return Response({'error': 'amount must be integer VND'}, status=status.HTTP_400_BAD_REQUEST)
+        if amount <= 0:
+            return Response({'error': 'Deposit amount must be > 0'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Create a Payment record (pending)
+        import uuid as _uuid
+        txn_ref = _uuid.uuid4().hex[:18]
+        payment = Payment.objects.create(
+            booking=booking,
+            amount=amount,
+            vnp_TxnRef=txn_ref,
+            vnp_OrderInfo=f'Deposit for booking {booking.id}'
+        )
+
+        vnp_params = {
+            'vnp_Version': '2.1.0',
+            'vnp_Command': 'pay',
+            'vnp_TmnCode': settings.VNPAY_TMN_CODE,
+            'vnp_Amount': amount * 100,  # amount in VND x100
+            'vnp_CurrCode': 'VND',
+            'vnp_TxnRef': payment.vnp_TxnRef,
+            'vnp_OrderInfo': payment.vnp_OrderInfo,
+            'vnp_OrderType': 'other',
+            'vnp_Locale': 'vn',
+            'vnp_ReturnUrl': settings.VNPAY_RETURN_URL,
+            'vnp_IpAddr': request.META.get('REMOTE_ADDR', '127.0.0.1'),
+            'vnp_CreateDate': timezone.now().strftime('%Y%m%d%H%M%S'),
+        }
+
+        # Sign params
+        sorted_keys = sorted(vnp_params.keys())
+        query_str = '&'.join([f"{k}={vnp_params[k]}" for k in sorted_keys])
+        hmac_obj = hmac.new(settings.VNPAY_HASH_SECRET.encode('utf-8'), query_str.encode('utf-8'), hashlib.sha512)
+        secure_hash = hmac_obj.hexdigest()
+        vnp_url = f"{settings.VNPAY_PAYMENT_URL}?{query_str}&vnp_SecureHash={secure_hash}"
+
+        # Mark booking deposit pending
+        if booking.deposit_status in ['none', 'failed']:
+            booking.deposit_status = 'pending'
+            booking.save(update_fields=['deposit_status'])
+
+        return Response({'payment_url': vnp_url})
+
+
+class VNPayReturnView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        params = request.query_params.dict()
+        vnp_secure_hash = params.pop('vnp_SecureHash', None)
+        # Validate hash
+        sorted_keys = sorted(k for k in params.keys())
+        query_str = '&'.join([f"{k}={params[k]}" for k in sorted_keys])
+        calc_hash = hmac.new(settings.VNPAY_HASH_SECRET.encode('utf-8'), query_str.encode('utf-8'), hashlib.sha512).hexdigest()
+        valid = (vnp_secure_hash and vnp_secure_hash.lower() == calc_hash.lower())
+
+        vnp_TxnRef = params.get('vnp_TxnRef')
+        try:
+            payment = Payment.objects.get(vnp_TxnRef=vnp_TxnRef)
+        except Payment.DoesNotExist:
+            payment = None
+
+        status_param = 'failed'
+        if valid and params.get('vnp_ResponseCode') == '00':
+            status_param = 'success'
+
+        if payment:
+            payment.vnp_ResponseCode = params.get('vnp_ResponseCode')
+            payment.vnp_TransactionNo = params.get('vnp_TransactionNo')
+            payment.vnp_BankCode = params.get('vnp_BankCode')
+            payment.vnp_PayDate = params.get('vnp_PayDate')
+            payment.vnp_SecureHash = vnp_secure_hash
+            payment.status = status_param
+            payment.save()
+
+            booking = payment.booking
+            if status_param == 'success':
+                booking.deposit_status = 'paid'
+                booking.deposit_paid_at = timezone.now()
+            else:
+                booking.deposit_status = 'failed'
+            booking.save(update_fields=['deposit_status', 'deposit_paid_at'])
+
+            # Redirect to frontend with result
+            from urllib.parse import quote
+            redirect_url = f"{getattr(settings, 'FRONTEND_BASE_URL', '') or ''}/payment-result?status={status_param}&booking_id={booking.id}"
+            return HttpResponseRedirect(redirect_url)
+
+        # If payment not found, just return 400
+        return Response({'error': 'Payment not found'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class VNPayIPNView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        params = request.query_params.dict()
+        vnp_secure_hash = params.pop('vnp_SecureHash', None)
+        # Validate hash
+        sorted_keys = sorted(k for k in params.keys())
+        query_str = '&'.join([f"{k}={params[k]}" for k in sorted_keys])
+        calc_hash = hmac.new(settings.VNPAY_HASH_SECRET.encode('utf-8'), query_str.encode('utf-8'), hashlib.sha512).hexdigest()
+        valid = (vnp_secure_hash and vnp_secure_hash.lower() == calc_hash.lower())
+
+        vnp_TxnRef = params.get('vnp_TxnRef')
+        try:
+            payment = Payment.objects.get(vnp_TxnRef=vnp_TxnRef)
+        except Payment.DoesNotExist:
+            return Response({'RspCode': '01', 'Message': 'Order not found'})
+
+        if not valid:
+            return Response({'RspCode': '97', 'Message': 'Invalid signature'})
+
+        # Update payment
+        payment.vnp_ResponseCode = params.get('vnp_ResponseCode')
+        payment.vnp_TransactionNo = params.get('vnp_TransactionNo')
+        payment.vnp_BankCode = params.get('vnp_BankCode')
+        payment.vnp_PayDate = params.get('vnp_PayDate')
+        payment.vnp_SecureHash = vnp_secure_hash
+        payment.status = 'success' if params.get('vnp_ResponseCode') == '00' else 'failed'
+        payment.save()
+
+        booking = payment.booking
+        if payment.status == 'success':
+            booking.deposit_status = 'paid'
+            booking.deposit_paid_at = timezone.now()
+        else:
+            booking.deposit_status = 'failed'
+        booking.save(update_fields=['deposit_status', 'deposit_paid_at'])
+
+        return Response({'RspCode': '00', 'Message': 'Confirm Success'})
