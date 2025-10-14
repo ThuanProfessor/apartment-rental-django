@@ -333,14 +333,14 @@ class BookingSerializer(serializers.ModelSerializer):
         property_id = validated_data.pop('property_id')
         property_obj = Property.objects.get(id=property_id)
         
-        # Calculate total amount using Decimal arithmetic (avoid float)
+       
         days = (validated_data['end_date'] - validated_data['start_date']).days
         months = (Decimal(days) / Decimal(30)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
         total = (property_obj.price * months).quantize(Decimal('1'), rounding=ROUND_HALF_UP)
         validated_data['total_amount'] = total
         validated_data['property'] = property_obj
         
-        # Use deposit_amount from frontend, fallback to property.deposit if not provided
+       
         if 'deposit_amount' not in validated_data or validated_data['deposit_amount'] is None:
             print(f"DEBUG: Using property.deposit = {property_obj.deposit}")
             try:
