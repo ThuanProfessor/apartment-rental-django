@@ -143,7 +143,7 @@ class Payment(models.Model):
     amount = models.DecimalField(max_digits=12, decimal_places=0)
     provider = models.CharField(max_length=30, default='vnpay')
     
-    # VNPay specific fields
+    # VNPay fileds
     vnp_TxnRef = models.CharField(max_length=64, unique=True)
     vnp_OrderInfo = models.CharField(max_length=255, blank=True, null=True)
     vnp_TransactionNo = models.CharField(max_length=64, blank=True, null=True)
@@ -187,7 +187,7 @@ class Contact(models.Model):
     message = models.TextField()
     phone_number = PhoneNumberField()
     
-    # Add status tracking for messages
+    
     STATUS_CHOICES = [
         ('unread', 'Chưa đọc'),
         ('read', 'Đã đọc'),
@@ -201,7 +201,7 @@ class Contact(models.Model):
         return f"Contact for {self.property.title}"
 
 
-# Viewing Schedule Model for property appointments
+
 class ViewingSchedule(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Chờ xác nhận'),
@@ -222,7 +222,7 @@ class ViewingSchedule(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     notes = models.TextField(blank=True)
     
-    # Response from landlord
+    # Phan hoi cua chu nha
     landlord_response = models.TextField(blank=True)
     confirmed_date = models.DateField(blank=True, null=True)
     confirmed_time = models.TimeField(blank=True, null=True)

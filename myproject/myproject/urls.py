@@ -31,8 +31,11 @@ openapi.Info(
     contact=openapi.Contact(email="beanheo2014@gmail.com"),
     license=openapi.License(name="HoangThuanNguyen License"),
 ),
+
 public=True,
 permission_classes=(permissions.AllowAny,),
+
+
 )
 
 urlpatterns = [

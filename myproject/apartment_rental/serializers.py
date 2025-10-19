@@ -24,7 +24,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
         }
 
     def validate_phone_number(self, value):
-        # Chấp nhận các dạng: +84xxxxxxxxx, 0xxxxxxxxx, rỗng
+        # Chấp nhận các dạng, rỗng
         if not value:
             return value
         s = str(value).strip()
@@ -106,7 +106,7 @@ class PropertyCreateSerializer(serializers.ModelSerializer):
         ref_name = 'PropertyCreate'
     
     def create(self, validated_data):
-        # If available_from not provided, default to today
+        #neu khong chon, lay ngay hien tai
         if not validated_data.get('available_from'):
             validated_data['available_from'] = date.today()
         return super().create(validated_data)
@@ -268,7 +268,7 @@ class PasswordChangeSerializer(serializers.Serializer):
         return attrs
 
 
-# Favorite Serializer
+# Favorite
 class FavoriteSerializer(serializers.ModelSerializer):
     property = PropertyListSerializer(read_only=True)
     property_id = serializers.UUIDField(write_only=True)
@@ -280,7 +280,7 @@ class FavoriteSerializer(serializers.ModelSerializer):
         ref_name = 'Favorite'
 
 
-# Dashboard Statistics Serializers
+# Dashboard
 class DashboardStatsSerializer(serializers.Serializer):
     total_properties = serializers.IntegerField()
     available_properties = serializers.IntegerField()
@@ -386,7 +386,7 @@ class ContactSerializer(serializers.ModelSerializer):
         ref_name = 'Contact'
 
 
-# Agent list serializer
+
 class AgentListSerializer(serializers.ModelSerializer):
     properties_count = serializers.IntegerField(read_only=True)
 

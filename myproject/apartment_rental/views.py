@@ -67,7 +67,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = Property.objects.select_related('owner').prefetch_related('images')
         
-        # Filter available properties for public
+    
         if self.action == 'list' and not self.request.user.is_authenticated:
             queryset = queryset.filter(status='available')
         
@@ -186,17 +186,17 @@ class UserViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
     
     def get_permissions(self):
-        # Allow public access to retrieve agent profile by id or list agents
+        
         if getattr(self, 'action', None) in ['retrieve', 'agents']:
             return [permissions.AllowAny()]
         return super().get_permissions()
     
     def get_queryset(self):
         action = getattr(self, 'action', None)
-        # Public profile view (AgentProfile.jsx): allow retrieving any user
+        
         if action == 'retrieve':
             return CustomUser.objects.all()
-        # For other actions, only operate on current user
+  
         req = getattr(self, 'request', None)
         if not req or not getattr(req, 'user', None) or not req.user.is_authenticated:
             return CustomUser.objects.none()
@@ -268,7 +268,7 @@ class RegisterView(APIView):
     permission_classes = [permissions.AllowAny]
     
     def post(self, request):
-        print(f"Register request data: {request.data}")  # Debug log
+        print(f"Register request data: {request.data}")  
         serializer = UserRegistrationSerializer(data=request.data)
         
         if serializer.is_valid():
@@ -408,16 +408,15 @@ class FileUploadView(APIView):
             print(f"User: {user.id} - {user.username}")  # Debug log
             
             try:
-                # Save directly via Cloudinary-backed DEFAULT_FILE_STORAGE
-                # This mirrors how PropertyImage uploads work and avoids manual SDK calls
+                
                 user.avatar.save(avatar_file.name, avatar_file, save=True)
 
-                # Build a URL to return
+      
                 avatar_url = None
                 try:
                     avatar_url = user.avatar.url
                 except Exception:
-                    # Fallback for safety if direct url access fails
+                 
                     try:
                         from cloudinary.utils import cloudinary_url
                         avatar_url, _ = cloudinary_url(str(user.avatar), secure=True)
@@ -431,14 +430,16 @@ class FileUploadView(APIView):
                 return Response({'avatar_url': avatar_url, 'url': avatar_url}, status=status.HTTP_200_OK)
                 
             except Exception as e:
-                print(f"Avatar save error: {e}")  # Debug log
+                print(f"Avatar save error: {e}")  
                 return Response({'error': f'Upload failed: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+            
         elif file_type == 'property_image':
             property_id = request.data.get('property_id')
             image = request.FILES.get('image')
             if not property_id or not image:
                 return Response({'error': 'Yêu cầu cung cấp ảnh'}, status=status.HTTP_400_BAD_REQUEST)
-            # Validate UUID format to avoid 500 when badly formed
+       
             from uuid import UUID
             try:
                 pid = UUID(str(property_id))
@@ -633,7 +634,7 @@ class ViewingScheduleViewSet(viewsets.ModelViewSet):
         if not req or not getattr(req, 'user', None) or not req.user.is_authenticated:
             return ViewingSchedule.objects.none()
         
-        # Show viewing schedules for properties owned by user (landlord) or created by user (tenant)
+    
         return ViewingSchedule.objects.filter(
             Q(tenant=req.user) | Q(property__owner=req.user)
         ).select_related('property', 'tenant')
@@ -667,13 +668,23 @@ class ViewingScheduleViewSet(viewsets.ModelViewSet):
         
         return Response(ViewingScheduleSerializer(schedule).data)
 
-# ===== VNPay Deposit Integration =====
+#Cấu hình VNPAY
 from django.conf import settings
 from django.utils import timezone
 from django.http import HttpResponse, HttpResponseRedirect
 import hmac
 import hashlib
-from urllib.parse import urlencode
+from urllib.parse import urlencode, quote_plus
+
+# VNPay helpers
+
+def _vnpay_build_query(params: dict) -> str:
+    items = sorted((k, v) for k, v in params.items() if v is not None)
+    
+    return urlencode(items, quote_via=quote_plus)
+
+def _vnpay_sign(query_str: str, secret: str) -> str:
+    return hmac.new(secret.encode('utf-8'), query_str.encode('utf-8'), hashlib.sha512).hexdigest()
 
 class VNPayInitiateView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -688,7 +699,7 @@ class VNPayInitiateView(APIView):
         except Booking.DoesNotExist:
             return Response({'error': 'Booking not found'}, status=status.HTTP_404_NOT_FOUND)
 
-        # Default deposit amount
+      
         if not amount:
             amount = booking.deposit_amount or 0
         try:
@@ -698,7 +709,7 @@ class VNPayInitiateView(APIView):
         if amount <= 0:
             return Response({'error': 'Deposit amount must be > 0'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Create a Payment record (pending)
+   
         import uuid as _uuid
         txn_ref = _uuid.uuid4().hex[:18]
         payment = Payment.objects.create(
@@ -707,6 +718,12 @@ class VNPayInitiateView(APIView):
             vnp_TxnRef=txn_ref,
             vnp_OrderInfo=f'Deposit for booking {booking.id}'
         )
+
+        ip = request.META.get('HTTP_X_FORWARDED_FOR')
+        if ip:
+            ip = ip.split(',')[0].strip()
+        else:
+            ip = request.META.get('REMOTE_ADDR', '127.0.0.1')
 
         vnp_params = {
             'vnp_Version': '2.1.0',
@@ -719,18 +736,22 @@ class VNPayInitiateView(APIView):
             'vnp_OrderType': 'other',
             'vnp_Locale': 'vn',
             'vnp_ReturnUrl': settings.VNPAY_RETURN_URL,
-            'vnp_IpAddr': request.META.get('REMOTE_ADDR', '127.0.0.1'),
+            'vnp_IpAddr': ip,
             'vnp_CreateDate': timezone.now().strftime('%Y%m%d%H%M%S'),
         }
 
-        # Sign params
-        sorted_keys = sorted(vnp_params.keys())
-        query_str = '&'.join([f"{k}={vnp_params[k]}" for k in sorted_keys])
-        hmac_obj = hmac.new(settings.VNPAY_HASH_SECRET.encode('utf-8'), query_str.encode('utf-8'), hashlib.sha512)
-        secure_hash = hmac_obj.hexdigest()
-        vnp_url = f"{settings.VNPAY_PAYMENT_URL}?{query_str}&vnp_SecureHash={secure_hash}"
+   
+        query_str = _vnpay_build_query(vnp_params)
+        secure_hash = _vnpay_sign(query_str, settings.VNPAY_HASH_SECRET)
+        # Temporary debug (remove in production)
+        print('[VNPay Initiate] query_str=', query_str)
+        print('[VNPay Initiate] secure_hash=', secure_hash[:16], '...')
+        vnp_url = (
+            f"{settings.VNPAY_PAYMENT_URL}?{query_str}"
+            f"&vnp_SecureHashType=HMACSHA512&vnp_SecureHash={secure_hash}"
+        )
 
-        # Mark booking deposit pending
+    
         if booking.deposit_status in ['none', 'failed']:
             booking.deposit_status = 'pending'
             booking.save(update_fields=['deposit_status'])
@@ -744,10 +765,11 @@ class VNPayReturnView(APIView):
     def get(self, request):
         params = request.query_params.dict()
         vnp_secure_hash = params.pop('vnp_SecureHash', None)
-        # Validate hash
-        sorted_keys = sorted(k for k in params.keys())
-        query_str = '&'.join([f"{k}={params[k]}" for k in sorted_keys])
-        calc_hash = hmac.new(settings.VNPAY_HASH_SECRET.encode('utf-8'), query_str.encode('utf-8'), hashlib.sha512).hexdigest()
+        params.pop('vnp_SecureHashType', None)
+      
+      
+        query_str = _vnpay_build_query(params)
+        calc_hash = _vnpay_sign(query_str, settings.VNPAY_HASH_SECRET)
         valid = (vnp_secure_hash and vnp_secure_hash.lower() == calc_hash.lower())
 
         vnp_TxnRef = params.get('vnp_TxnRef')
@@ -777,12 +799,12 @@ class VNPayReturnView(APIView):
                 booking.deposit_status = 'failed'
             booking.save(update_fields=['deposit_status', 'deposit_paid_at'])
 
-            # Redirect to frontend with result
+         
             from urllib.parse import quote
             redirect_url = f"{getattr(settings, 'FRONTEND_BASE_URL', '') or ''}/payment-result?status={status_param}&booking_id={booking.id}"
             return HttpResponseRedirect(redirect_url)
 
-        # If payment not found, just return 400
+   
         return Response({'error': 'Payment not found'}, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -790,9 +812,10 @@ class VNPayIPNView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def get(self, request):
+        
         params = request.query_params.dict()
         vnp_secure_hash = params.pop('vnp_SecureHash', None)
-        # Validate hash
+
         sorted_keys = sorted(k for k in params.keys())
         query_str = '&'.join([f"{k}={params[k]}" for k in sorted_keys])
         calc_hash = hmac.new(settings.VNPAY_HASH_SECRET.encode('utf-8'), query_str.encode('utf-8'), hashlib.sha512).hexdigest()
@@ -807,7 +830,7 @@ class VNPayIPNView(APIView):
         if not valid:
             return Response({'RspCode': '97', 'Message': 'Invalid signature'})
 
-        # Update payment
+   
         payment.vnp_ResponseCode = params.get('vnp_ResponseCode')
         payment.vnp_TransactionNo = params.get('vnp_TransactionNo')
         payment.vnp_BankCode = params.get('vnp_BankCode')
