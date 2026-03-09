@@ -1,109 +1,92 @@
-#  Website Quản Lý Cho Thuê Căn Hộ
+# Apartment Rental Management System
 
-##  Giới thiệu
-Đây là dự án cá nhân với mục tiêu xây dựng một nền tảng website quản lý cho thuê căn hộ/phòng trọ.  
-Hệ thống cho phép người cho thuê đăng tin và người thuê có thể tìm kiếm, xem thông tin chi tiết, hình ảnh, vị trí bản đồ và liên hệ trực tiếp với chủ nhà.  
-Ngoài ra, website cung cấp giao diện quản trị cho admin để quản lý toàn bộ hệ thống một cách thuận tiện.
-
----
-
-##  Mục tiêu
-- Xây dựng website hỗ trợ **cho thuê căn hộ/phòng** trực tuyến.  
-- Hỗ trợ **người thuê** tìm kiếm, lọc và xem chi tiết căn hộ.  
-- Cho phép **người cho thuê** quản lý danh sách bài đăng dễ dàng.  
-- **Admin** quản lý toàn bộ hệ thống thông qua **Django Admin Site**.  
-- Đảm bảo **bảo mật và phân quyền** người dùng.  
+## About the Project
+This is a personal project aimed at building a comprehensive apartment and room rental management platform. 
+The system allows landlords to post property listings, while tenants can easily search, view detailed information, browse images, check map locations, and contact hosts directly. Additionally, the platform provides a centralized administrative interface for convenient system management.
 
 ---
 
-##  Công nghệ sử dụng
-- **Backend**: Django + Django Rest Framework  
-- **Frontend**: ReactJS  
-- **Cơ sở dữ liệu**: MySQL  
-- **Triển khai**: PythonAnywhere / Railway / Render  
-- **API bên thứ 3**: Google Maps API (hiển thị bản đồ)  
-- **Realtime Chat**: Firebase (tích hợp trò chuyện giữa người thuê và người cho thuê)  
-- **Xác thực & Bảo mật**: OAuth2
+## Key Objectives
+- Develop an online **apartment/room rental** platform.
+- Enable **tenants** to search, filter, and view property details seamlessly.
+- Allow **landlords** to easily manage their property listings.
+- Centralize system management for **Administrators** via the **Django Admin Site**.
+- Ensure robust **security and role-based access control (RBAC)**.
+
+---
+
+## Tech Stack
+- **Backend**: Django + Django REST Framework
+- **Frontend**: ReactJS
+- **Database**: MySQL
+- **Deployment**: PythonAnywhere / Railway / Render
+- **Third-party APIs**: Google Maps API (Location integration)
+- **Real-time Chat**: Firebase (Tenant-landlord communication)
+- **Authentication & Security**: OAuth2
   <img width="1270" height="679" alt="image" src="https://github.com/user-attachments/assets/42ee8acf-8f9d-4713-b103-7e2ae7e4de00" />
 
+---
+
+## Core Features
+
+### General Users
+- **Authentication**: Register / Login (Tenant, Landlord, Admin).
+- **Profile Management**: Update personal info, avatar, phone number, etc.
+- **Listing Details**: View descriptions, images, Google Maps location, and contact info.
+- **Contact Host**: Reach out via provided contact info or real-time chat.
+
+### Landlords (Hosts)
+- **Create Listings**: Post properties with titles, descriptions, images, rental prices, locations, and amenities.
+- **Listing Management**: Add, update, delete, or toggle visibility (e.g., hide when a room is rented).
+
+### Tenants
+- **Search**: Find properties by keywords, address, or room type.
+- **Filter**: Narrow down listings by specific criteria (price range, area, location, amenities).
+
+### Administrators (Admins)
+- Manage all **users** and **listings** centrally via Django Admin.
+- Suspend accounts or remove listings that violate policies.
+- **System Dashboard**: Visualize data and generate statistical charts.
 
 ---
 
-##  Chức năng chính
-
-###  Người dùng
-- **Đăng ký / Đăng nhập** (Người thuê, Người cho thuê, Admin).  
-- **Quản lý tài khoản cá nhân**: cập nhật tên, ảnh đại diện, số điện thoại,…  
-- **Xem chi tiết bài đăng**: mô tả, hình ảnh, bản đồ Google Maps, thông tin liên hệ.  
-- **Liên hệ chủ nhà**: qua thông tin liên hệ hoặc chat realtime.  
-
-###  Người cho thuê
-- **Đăng bài cho thuê**: tiêu đề, mô tả, hình ảnh, giá thuê, vị trí, tiện ích,…  
-- **Quản lý bài đăng**: thêm, sửa, xóa, ẩn/hiện khi phòng đã cho thuê.  
-
-###  Người thuê
-- **Tìm kiếm** theo từ khóa: địa chỉ, loại phòng,…  
-- **Lọc bài đăng** theo nhiều tiêu chí: giá thuê, diện tích, khu vực, tiện ích,…  
-
-###  Quản trị viên (Admin)
-- Quản lý toàn bộ **người dùng** và **bài đăng** qua Django Admin.  
-- Khóa tài khoản / xóa bài đăng vi phạm.  
-- **Thống kê hệ thống**: vẽ biểu đồ tổng quan.
-
-- 
-
----
-
-##  Kiến trúc hệ thống
+## System Architecture
 ![ReactJS](https://github.com/user-attachments/assets/fa871d99-dcb9-4385-977e-ee0602b2105c)
 
-
 ---
 
-##  Cài đặt & Chạy thử
+## Getting Started
 
-### 1. Clone project
+### Clone the repository
 ```bash
-git clone https://github.com/ThuanProfessor/apartment-rental-django.git
+git clone [https://github.com/ThuanProfessor/apartment-rental-django.git](https://github.com/ThuanProfessor/apartment-rental-django.git)
 cd apartment-rental-django
 ```
-### 2. Khởi tạo môi trường ảo
+
+### Create a virtual environment
 ```bash
-python -m venv thuanvenv
+python -m venv venv
 ```
-### 3. Kích hoạt môi trường ảo - venv
+
+### Activate the virtual environment
 ```bash
-source thuanvenv/bin/activate   # (Windows: venv\Scripts\activate)
+source venv/bin/activate  # On Windows use: venv\Scripts\activate
 ```
-### 4. Cài các thư viện cần thiết
+
+### Install required Python dependencies
 ```bash
 pip install -r requirements.txt
 ```
-### 5. Khởi tạo Models xuống database
+
+### Run database migrations to create MySQL tables
 ```bash
 python manage.py migrate
+```
+
+### Start the Django development server
+```bash
 python manage.py runserver
 ```
-## Bảo mật 
-- Sử dụng **OAuth2** cho xác thực và phân quyền
-- Mã hóa mật khẩu người dùng bằng bcrypt/argon2 (Django default).
-- Chống SQL Injection, CSRF, XSS.
-##  Kết quả mong đợi
-- Nền tảng website hoàn chỉnh, đáp ứng nhu cầu thuê căn hộ/phòng.
-- Giao diện thân thiện, dễ sử dụng cho cả người thuê và người cho thuê.
-- Hệ thống bảo mật tốt, quản lý dữ liệu hiệu quả
-##  Contributors
-
-<table>
-  <tr>
-    <td align="center">
-      <a href="https://github.com/thuanprofessor">
-        <img src="https://github.com/thuanprofessor.png" width="100" height="100" style="border-radius: 50%; object-fit: cover;"><br>
-        <sub><b>Thuan Professor</b></sub>
-      </a>
-    </td>
-  </tr>
-</table>
 
 ##  License
 
@@ -117,5 +100,3 @@ This project is licensed under multiple open source licenses:
 
 For support and inquiries, please contact:
 - 📧 Email: [hoangthuandev04@gmail.com](mailto:hoangthuandev04@gmail.com)
-- 💬 Issues: [GitHub Issues](https://github.com/ThuanProfessor/apartment-retal-django/issues)
-
