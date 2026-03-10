@@ -1,6 +1,6 @@
-# 🏠 Website Quản Lý Cho Thuê Căn Hộ
+#  Website Quản Lý Cho Thuê Căn Hộ
 
-## 📌 Giới thiệu
+##  Giới thiệu
 Đây là dự án cá nhân với mục tiêu xây dựng một nền tảng website quản lý cho thuê căn hộ/phòng trọ.  
 Hệ thống cho phép người cho thuê đăng tin và người thuê có thể tìm kiếm, xem thông tin chi tiết, hình ảnh, vị trí bản đồ và liên hệ trực tiếp với chủ nhà.  
 Ngoài ra, website cung cấp giao diện quản trị cho admin để quản lý toàn bộ hệ thống một cách thuận tiện.
